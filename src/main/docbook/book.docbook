@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <book version="5.0"
+      xml:lang="en"
       xmlns="http://docbook.org/ns/docbook"
       xmlns:xlink="http://www.w3.org/1999/xlink"
       xmlns:xi="http://www.w3.org/2001/XInclude"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:xml="http://www.w3.org/XML/1998/namespace"
       xsi:schemaLocation="http://docbook.org/ns/docbook
                          http://www.docbook.org/xml/5.0/xsd/docbook.xsd
                          http://www.w3.org/1999/xlink
-                         http://www.docbook.org/xml/5.0/xsd/xlink.xsd">
+                         http://www.docbook.org/xml/5.0/xsd/xlink.xsd
+                         http://www.w3.org/XML/1998/namespace
+                         http://www.docbook.org/xml/5.0/xsd/xml.xsd">
     <info>
         <title>On Lisp</title>
         <author>
@@ -17,9 +21,16 @@
             </personname>
             <email>pg@ycombinator.com</email>
         </author>
-        <publisher>Prentice Hall</publisher>
+        <publisher>
+            <publishername>Prentice Hall</publishername>
+        </publisher>
+        <date>1993</date>
     </info>
 
     <xi:include href="preface.docbook"/>
+    <xi:include href="the-extensible-language.docbook"/>
+    <xi:include href="functions.docbook"/>
+    <xi:include href="functional-programming.docbook"/>
+    <xi:include href="utility-functions.docbook"/>
 
 </book>

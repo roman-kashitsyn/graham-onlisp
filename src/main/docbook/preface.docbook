@@ -2,12 +2,14 @@
 <preface version="5.0"
          xml:lang="en"
          xml:id="preface"
-         xmlns:xi="http://www.w3.org/2001/XInclude"
+         xreflabel="Preface"
          xmlns="http://docbook.org/ns/docbook"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xmlns:xlink="http://www.w3.org/1999/xlink"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://www.w3.org/1999/xlink
-                            http://www.docbook.org/xml/5.0/xsd/xlink.xsd">
+                             http://www.docbook.org/xml/5.0/xsd/xlink.xsd
+                             http://docbook.org/ns/docbook
+                             http://www.docbook.org/xml/5.0/xsd/docbook.xsd">
     <title>Preface</title>
     <para>
         This book is intended for anyone who wants to become a better
@@ -21,7 +23,9 @@
         It's difficult to convey the essence of a programming language
         in one sentence, but John Foderaro has come close:
     </para>
-    <blockquote>"Lisp is a programmable programming language."</blockquote>
+    <blockquote>
+        <para>Lisp is a programmable programming language.</para>
+    </blockquote>
     <para>
         There is more to Lisp than this, but the ability to bend Lisp to
         one's will is a large part of what distinguishes a Lisp expert from
@@ -30,7 +34,7 @@
         their programs. This book teaches how to program in the bottom-up
         style for which Lisp is inherently well-suited.
     </para>
-    <section xml:id="bottom-up-design">
+    <section xml:id="bottom-up-design" xreflabel="Bottom-up Design">
         <title>Bottom-up Design</title>
         <para>
             Bottom-up design is becoming more important as software grows in
@@ -143,7 +147,7 @@
             tried to explain as clearly as I can.
         </para>
     </section>
-    <section xml:id="plan-of-the-book">
+    <section xml:id="plan-of-the-book" xreflabel="Plan of the Book">
         <title>Plan of the Book</title>
         <para>
             Since functions are the foundation of Lisp programs, the book
@@ -241,7 +245,7 @@
         </para>
     </section>
 
-    <section xml:id="examples-in-preface">
+    <section xml:id="examples-in-preface" xreflabel="Examples in Preface">
         <title>Examples in Preface</title>
         <para>
             Lisp is a family of languages. Since Common Lisp promises to
@@ -268,7 +272,7 @@
             <link xlink:href="mailto:onlisp@das.harvard.edu">onlisp@das.harvard.edu</link>.
         </para>
     </section>
-    <section xml:id="acknowledgements">
+    <section xml:id="acknowledgements" xreflabel="Acknowledgements">
         <title>Acknowledgements</title>
         <para>
             While writing this book I have been particularly thankful for
