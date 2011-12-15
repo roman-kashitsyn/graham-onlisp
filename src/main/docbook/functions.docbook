@@ -16,10 +16,10 @@
     <title>Functions</title>
     <para>
         Functions are the building-blocks of Lisp programs. They are
-        also the building-blocks of Lisp. In most languages the <code>+</code>
+        also the building-blocks of Lisp. In most languages the <function>+</function>
         operator is something quite different from user-defined functions.
         But Lisp has a single model, function application, to describe all the
-        computation done by a program. The Lisp <code>+</code> operator is
+        computation done by a program. The Lisp <function>+</function> operator is
         a function, just like the ones you can define yourself.
     </para>
     <para>
@@ -122,7 +122,9 @@ T]]>
             parameter list, and a body of zero or more expressions. This
             lambda-expression refers to a function equivalent to double:
         </para>
-        <programlisting><![CDATA[(lambda (x) (* x 2))]]></programlisting>
+        <programlisting><![CDATA[
+(lambda (x) (* x 2))]]>
+        </programlisting>
         <para>It describes a function which takes one argument x, and returns
             2x.
         </para>
@@ -257,12 +259,16 @@ T]]>
             the rest of the arguments onto the list given last. So the
             expression
         </para>
-        <programlisting><![CDATA[(apply #'+ 1 '(2))]]></programlisting>
+        <programlisting><![CDATA[
+(apply #'+ 1 '(2))]]>
+        </programlisting>
         <para>is equivalent to the preceding four. If it is inconvenient to
             give the arguments as a list, we can use funcall, which differs
             from apply only in this respect. This expression
         </para>
-        <programlisting><![CDATA[(funcall #'+ 1 2)]]></programlisting>
+        <programlisting><![CDATA[
+(funcall #'+ 1 2)]]>
+        </programlisting>
         <para>has the same effect as those above.</para>
         <para>
             Many built-in Common Lisp functions take functional arguments.
@@ -509,7 +515,7 @@ T]]>
             mapcar a sharp-quoted lambda-expression containing free variables,
             you're using closures. For example, suppose we want to write a
             function which takes a list of numbers and adds a certain amount to
-            each one. The function <code>list+</code>
+            each one. The function <function>list+</function>
         </para>
         <programlisting><![CDATA[
 (defun list+ (lst n)
@@ -530,8 +536,9 @@ T]]>
             <footnote>
                 <para>
                     Under dynamic scope the same idiom will work for a
-                    different reason - so long as neither of mapcar's parameter
-                    is called x.
+                    different reason - so long as neither of
+                    <function>mapcar</function>'s parameter is called
+                    <parameter>x</parameter>.
                 </para>
             </footnote>
         </para>
@@ -576,9 +583,9 @@ add10 (make-adder 10))
 13]]>
         </programlisting>
         <para>
-            In the closures returned by <code>make-adder</code>, the internal state is
-            fixed, but it's also possible to make closures which can be asked
-            to change their state.
+            In the closures returned by <function>make-adder</function>, the
+            internal state is fixed, but it's also possible to make closures
+            which can be asked to change their state.
         </para>
         <programlisting><![CDATA[
 (defun make-adderb (n)
@@ -588,7 +595,7 @@ add10 (make-adder 10))
         (+ x n))))]]>
         </programlisting>
         <para>
-            This new version of <code>make-adder</code> returns closures which,
+            This new version of <function>make-adder</function> returns closures which,
             when called with one argument, behave just like the old ones.
         </para>
         <programlisting><![CDATA[
@@ -611,7 +618,8 @@ add10 (make-adder 10))
         </programlisting>
         <para>
             It's even possible to return a group of closures which share the
-            same data objects. Figure 2.1 contains a function which creates
+            same data objects. <xref linkend="closures-share-a-list"/>
+            contains a function which creates
             primitive databases. It takes an assoc-list (db), and returns a
             list of three closures which query, add, and delete entries,
             respectively.
@@ -626,7 +634,9 @@ add10 (make-adder 10))
  #<Interpreted-Function 802317>
  #<Interpreted-Function 802347>)]]>
         </programlisting>
-        <programlisting><![CDATA[
+        <figure xml:id="closures-share-a-list">
+            <title>Three closures share a list.</title>
+            <programlisting><![CDATA[
 (defun make-dbms (db)
   (list
    #'(lambda (key)
@@ -637,8 +647,8 @@ add10 (make-adder 10))
    #'(lambda (key)
        (setf db (delete key db :key #'car))
        key)))]]>
-        </programlisting>
-        <para>Figure 2.1: Three closures share a list.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX1" id="IDX1"></a> -->
         <para>The actual assoc-list within the database is invisible from the
             outside world--we can't even tell that it's an assoc-list--but it
@@ -736,12 +746,16 @@ ENGLAND]]>
             let for functions. Each of the binding specifications in a labels
             expression should have the form
         </para>
-        <programlisting><![CDATA[(#name# #parameters# . #body#)]]></programlisting>
+        <programlisting><![CDATA[
+(#name# #parameters# . #body#)]]>
+        </programlisting>
         <para>
             Within the labels expression, #name# will refer to a function
             equivalent to:
         </para>
-        <programlisting><![CDATA[#'(lambda #parameters# . #body#)]]></programlisting>
+        <programlisting><![CDATA[
+#'(lambda #parameters# . #body#)]]>
+        </programlisting>
         <para>So for example:</para>
         <programlisting><![CDATA[
 > (labels ((inc (x) (1+ x)))
@@ -844,13 +858,15 @@ ENGLAND]]>
             but not all of them do it by default. So after writing your
             functions to be tail-recursive, you may also want to put
         </para>
-        <programlisting><![CDATA[(proclaim '(optimize speed))]]></programlisting>
+        <programlisting><![CDATA[
+(proclaim '(optimize speed))]]>
+        </programlisting>
         <para>at the top of the file, to ensure that the compiler can take
             advantage of your efforts.
             <footnote>
                 <para>
-                    The declaration (optimize speed) ought to be an
-                    abbreviation for (optimize (speed 3)). However, one
+                    The declaration <code>(optimize speed)</code> ought to be an
+                    abbreviation for <code>(optimize (speed 3))</code>. However, one
                     Common Lisp implementation does tail-recursion optimization
                     with the former, but not the latter.
                 </para>
@@ -938,7 +954,8 @@ T]]>
             should be viewed with the same suspicion.
             <footnote>
                 <para>
-                    An explanation of why it is bad to call eval explicitly appears on page 278.
+                    An explanation of why it is bad to call <function>eval</function>
+                    explicitly appears on page 278.
                 </para>
             </footnote>
             When Section <xref linkend="functions-as-data"/> said that
@@ -1016,9 +1033,13 @@ T]]>
             could entail more effort than the function itself. If we define a
             function:
         </para>
-        <programlisting><![CDATA[(defun 50th (lst) (nth 49 lst))]]></programlisting>
+        <programlisting><![CDATA[
+(defun 50th (lst) (nth 49 lst))]]>
+        </programlisting>
         <para>and make the declaration:</para>
-        <programlisting><![CDATA[(proclaim '(inline 50th))]]></programlisting>
+        <programlisting><![CDATA[
+(proclaim '(inline 50th))]]>
+        </programlisting>
         <para>then a reference to 50th within a compiled function should no
             longer require a real function call. If we define and compile a
             function which calls 50th,

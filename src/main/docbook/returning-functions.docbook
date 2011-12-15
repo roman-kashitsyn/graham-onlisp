@@ -1,0 +1,999 @@
+<?xml version="1.0" encoding="utf-8"?>
+<chapter version="5.0"
+         xml:lang="en"
+         xml:id="utility-functions"
+         xreflabel="Utility Functions"
+         xmlns="http://docbook.org/ns/docbook"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:xml="http://www.w3.org/XML/1998/namespace"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         xsi:schemaLocation="http://docbook.org/ns/docbook
+                             http://www.docbook.org/xml/5.0/xsd/docbook.xsd
+                             http://www.w3.org/1999/xlink
+                             http://www.docbook.org/xml/5.0/xsd/xlink.xsd
+                             http://www.w3.org/XML/1998/namespace
+                             http://www.docbook.org/xml/5.0/xsd/xml.xsd">
+    <title>Returning Functions</title>
+    <para>
+        The previous chapter showed how the ability to pass functions as
+        arguments leads to greater possibilities for abstraction. The more
+        we can do to functions, the more we can take advantage of these
+        possibilities. By defining functions to build and return new
+        functions, we can magnify the effect of utilities which take
+        functions as arguments.
+    </para>
+    <para>
+        The utilities in this chapter operate on functions. It would be
+        more natural, at least in Common Lisp, to write many of them to
+        operate on expressions - that is, as macros. A layer of macros will
+        be superimposed on some of these operators in Chapter 15. However,
+        it is important to know what part of the task can be done with
+        functions, even if we will eventually call these functions only
+        through macros.
+    </para>
+    <section xml:id="common-lisp-evolves" xreflabel="Common Lisp Evolves">
+        <title>Common Lisp Evolves</title>
+        <para>Common Lisp originally provided several pairs of complementary
+            functions. The functions remove-if and remove-if-not make one such
+            pair. If
+            <parameter>pred</parameter>
+            is a predicate of one argument,
+            then
+        </para>
+        <programlisting><![CDATA[
+(remove-if-not #'pred lst)]]>
+        </programlisting>
+        <para>is equivalent to</para>
+        <programlisting><![CDATA[
+(remove-if #'(lambda (x) (not (pred x))) lst)]]>
+        </programlisting>
+        <para>
+            By varying the function given as an argument to one, we can
+            duplicate the effect of the other. In that case, why have both?
+            CLTL2 includes a new function intended for cases like this:
+            complement takes a predicate p and returns a function which always
+            returns the opposite value. When p returns true, the complement
+            returns false, and vice versa. Now we can replace
+        </para>
+        <programlisting><![CDATA[
+    (remove-if-not #'pred lst)]]>
+        </programlisting>
+        <para>with the equivalent</para>
+        <programlisting><![CDATA[
+(remove-if (complement #'pred) lst)]]>
+        </programlisting>
+        <para>
+            With complement, there is little justification for continuing to
+            use the -if-not functions.
+            <footnote>
+                <para>
+                    Except perhaps<function>remove-if-not</function>, which is used
+                    more often than<function>remove-if</function>.
+                </para>
+            </footnote>
+            Indeed, CLTL2 (p. 391) says that their
+            use is now deprecated. If they remain in Common Lisp, it will only
+            be for the sake of compatibility.
+        </para>
+        <para>
+            The new complement operator is the tip of an important iceberg:
+            functions which return functions. This has long been an important
+            part of the idiom of Scheme. Scheme was the first Lisp to make
+            functions lexical closures, and it is this which makes it
+            interesting to have functions as return values.
+        </para>
+        <para>
+            It's not that we couldn't return functions in a dynamically
+            scoped Lisp. The following function would work the same under
+            dynamic or lexical scope:
+        </para>
+        <programlisting><![CDATA[
+(defun joiner (obj)
+  (typecase obj
+    (cons #'append)
+    (number #'+)))]]>
+        </programlisting>
+        <para>
+            It takes an object and, depending on its type, returns a
+            function to add such objects together. We could use it to define a
+            polymorphic join function that worked for numbers or lists:
+        </para>
+        <programlisting><![CDATA[
+(defun join (&rest args)
+  (apply (joiner (car args)) args))]]>
+        </programlisting>
+        <para>
+            However, returning constant functions is the limit of what we
+            can do with dynamic scope. What we can't do (well) is build
+            functions at runtime; joiner can return one of two functions, but
+            the two choices are fixed.
+        </para>
+        <para>On page 18 we saw another function for returning functions,
+            which relied on lexical scope:
+        </para>
+        <programlisting><![CDATA[
+(defun make-adder (n)
+  #'(lambda (x) (+ x n)))]]>
+        </programlisting>
+        <para>
+            Calling
+            <function>make-adder</function>
+            will yield a closure whose behavior depends
+            on the value originally given as an argument:
+        </para>
+        <programlisting><![CDATA[
+> (setq add3 (make-adder 3))
+#<Interpreted-Function BF1356>;
+> (funcall add3 2)
+5]]>
+        </programlisting>
+        <para>
+            Under lexical scope, instead of merely choosing among a group of
+            constant functions, we can build new closures at runtime. With
+            dynamic scope this technique is impossible.
+            <footnote>
+                <para>
+                    Under dynamic scope, we could write something like
+                    make-adder, but it would hardly ever work. The binding
+                    of n would be determined by the environment in which
+                    the returned function was eventually called, and we might
+                    not have any control over that.
+                </para>
+            </footnote>
+            If we consider how
+            complement would be written, we see that it too must return a
+            closure:
+        </para>
+        <programlisting><![CDATA[
+(defun complement (fn)
+  #'(lambda (&rest args) (not (apply fn args))))]]>
+        </programlisting>
+        <para>
+            The function returned by complement uses the value of the
+            parameter fn when complement was called. So instead of just
+            choosing from a group of constant functions, complement can
+            custom-build the inverse of any function:
+        </para>
+        <programlisting><![CDATA[
+> (remove-if (complement #'oddp) '(1 2 3 4 5 6))
+(1 3 5)]]>
+        </programlisting>
+        <para>
+            Being able to pass functions as arguments is a powerful tool for
+            abstraction. The ability to write functions which return functions
+            allows us to make the most of it. The remaining sections present
+            several examples of utilities which return functions.
+        </para>
+    </section>
+    <section xml:id="orthogonality" xreflabel="Orthogonality">
+        <title>Orthogonality</title>
+        <para>
+            An orthogonal language is one in which you can express a lot by
+            combining a small number of operators in a lot of different ways.
+            Toy blocks are very orthogonal; a plastic model kit is hardly
+            orthogonal at all. The main advantage of complement is that it
+            makes a language more orthogonal. Before complement, Common Lisp
+            had pairs of functions like
+            <function>remove-if</function>
+            and<function>remove-if-not</function>,
+            <function>subst-if</function>
+            and<function>subst-if-not</function>, and so on. With complement
+            we can do without half of them.
+        </para>
+        <para>The
+            <function>setf</function>
+            macro also improves Lisp's orthogonality. Earlier
+            dialects of Lisp would often have pairs of functions for reading
+            and writing data. With property-lists, for example, there would be
+            one function to establish properties and another function to ask
+            about them. In Common Lisp, we have only the latter, get. To
+            establish a property, we use get in combination with
+            <function>setf</function>:
+        </para>
+        <programlisting><![CDATA[
+(setf (get 'ball 'color) 'red)]]>
+        </programlisting>
+        <figure xml:id="destructive-equivalents">
+            <title>Returning destructive equivalents.</title>
+            <programlisting><![CDATA[
+(defvar *!equivs* (make-hash-table))
+
+(defun ! (fn)
+  (or (gethash fn *!equivs*) fn))
+
+(defun def! (fn fn!)
+  (setf (gethash fn *!equivs*) fn!))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX12" id="IDX12"></a> -->
+        <para>We may not be able to make Common Lisp smaller, but we can do
+            something almost as good: use a smaller subset of it. Can we define
+            any new operators which would, like complement and
+            <function>setf</function>
+            , help us
+            toward this goal? There is at least one other way in which
+            functions are grouped in pairs. Many functions also come in a
+            destructive version:
+            <function>remove-if</function>
+            and
+            <function>delete-if</function>
+            ,
+            <function>reverse</function>
+            and
+            <function>nreverse</function>
+            ,
+            <function>append</function>
+            and
+            <function>nconc</function>
+            . By defining an operator to return the destructive
+            counterpart of a function, we would not have to refer to the
+            destructive functions directly.
+        </para>
+        <para>
+            <xref linkend="destructive-equivalents"/>
+            contains code to support
+            the notion of destructive counterparts. The global hash-table
+            <varname>*!equivs*</varname>
+            maps functions to
+            their destructive equivalents;
+            <function>!</function>
+            returns destructive equivalents;
+            and
+            <function>def!</function>
+            sets them. The name of the
+            <function>!</function>
+            (bang) operator comes from
+            the Scheme convention of appending ! to the names of functions with
+            side-effects. Now once we have defined
+        </para>
+        <programlisting><![CDATA[
+(def! #'remove-if #'delete-if)]]>
+        </programlisting>
+        <para>then instead of</para>
+        <programlisting><![CDATA[
+(delete-if #'oddp lst)]]>
+        </programlisting>
+        <para>we would say</para>
+        <programlisting><![CDATA[
+(funcall (! #'remove-if) #'oddp lst)]]>
+        </programlisting>
+        <para>Here the awkwardness of Common Lisp masks the basic elegance of
+            the idea, which would be more visible in Scheme:
+        </para>
+        <programlisting><![CDATA[
+((! remove-if) oddp lst)]]>
+        </programlisting>
+        <figure xml:id="memoize">
+            <title>Memoizing utility.</title>
+            <programlisting><![CDATA[
+(defun memoize (fn)
+  (let ((cache (make-hash-table :test #'equal)))
+    #'(lambda (&rest args)
+        (multiple-value-bind (val win) (gethash args cache)
+          (if win
+              val
+            (setf (gethash args cache)
+                  (apply fn args)))))))]]>
+            </programlisting>
+        </figure>
+
+        <!-- <a name="IDX13" id="IDX13"></a> -->
+        <para>
+            As well as greater orthogonality, the
+            <function>!</function>
+            operator brings a couple
+            of other benefits. It makes programs clearer, because we can see
+            immediately that
+            <code>(! #'foo)</code>
+            is the destructive equivalent of foo.
+            Also, it gives destructive operations a distinct, recognizable form
+            in source code, which is good because they should receive special
+            attention when we are searching for a bug.
+        </para>
+        <para>
+            Since the relation between a function and its destructive
+            counterpart will usually be known before runtime, it would be most
+            efficient to define
+            <function>!</function>
+            as a macro, or even provide a read macro for
+            it.
+        </para>
+    </section>
+    <section xml:id="memoizing" xreflabel="Memoizing">
+        <title>Memoizing</title>
+        <para>
+            If some function is expensive to compute, and we expect
+            sometimes to make the same call more than once, then it pays to
+            memoize: to cache the return values of all the previous calls, and
+            each time the function is about to be called, to look first in the
+            cache to see if the value is already known.
+        </para>
+        <para>
+            <xref linkend="memoize"/>
+            contains a generalized memoizing utility. We give a
+            function to memoize, and it returns an equivalent memoized
+            version - a closure containing a hash-table in which to store the
+            results of previous calls.
+        </para>
+        <programlisting><![CDATA[
+> (setq slowid (memoize #'(lambda (x) (sleep 5) x)))
+#<Interpreted-Function C38346>;
+> (time (funcall slowid 1))
+Elapsed Time = 5.15 seconds
+1
+> (time (funcall slowid 1))
+Elapsed Time = 0.00 seconds
+1]]>
+        </programlisting>
+        <para>
+            With a memoized function, repeated calls are just hash-table
+            lookups. There is of course the additional expense of a lookup on
+            each initial call, but since we would only memoize a function that
+            was sufficiently expensive to compute, it's reasonable to assume
+            that this cost is insignificant in comparison.
+        </para>
+        <para>
+            Though adequate for most uses, this implementation of memoize
+            has several limitations. It treats calls as identical if they have
+            equal argument lists; this could be too strict if the function had
+            keyword parameters. Also, it is intended only for single-valued
+            functions, and cannot store or return multiple values.
+        </para>
+        <figure xml:id="compose">
+            <title>An operator for functional composition.</title>
+            <programlisting><![CDATA[
+(defun compose (&rest fns)
+  (if fns
+      (let ((fn1 (car (last fns)))
+            (fns (butlast fns)))
+        #'(lambda (&rest args)
+            (reduce #'funcall fns
+                    :from-end t
+                    :initial-value (apply fn1 args))))
+    #'identity))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX14" id="IDX14"></a> -->
+    </section>
+    <section xml:id="composing-functions" xreflabel="Composing Functions">
+        <title>Composing Functions</title>
+        <para>
+            The complement of a function
+            <function>f</function>
+            is denoted
+            <function>#f</function>. Section
+            <xref linkend="common-lisp-evolves"/>
+            showed
+            that closures make it possible to define
+            <function>#</function>
+            as a Lisp function.
+            Another common operation on functions is composition, denoted by
+            the operator
+            <function>#</function>
+            . If f and g are functions, then f #g is also a
+            function, and
+            <code>f #g(x) = f (g(x))</code>. Closures also make it possible to
+            define
+            <function>#</function>
+            as a Lisp function.
+        </para>
+        <para>
+            <xref linkend="compose"/>
+            defines a compose function which takes any number of
+            functions and returns their composition. For example
+        </para>
+        <programlisting><![CDATA[
+(compose #'list #'1+)]]>
+        </programlisting>
+        <para>returns a function equivalent to</para>
+        <programlisting><![CDATA[
+#'(lambda (x) (list (1+ x)))]]>
+        </programlisting>
+        <para>
+            All the functions given as arguments to compose must be
+            functions of one argument, except the last. On the last function
+            there are no restrictions, and whatever arguments it takes, so will
+            the function returned by compose:
+        </para>
+        <programlisting><![CDATA[
+> (funcall (compose #'1+ #'find-if) #'oddp '(2 3 4))
+4]]>
+        </programlisting>
+        <figure xml:id="more-function-builders">
+            <title>More function builders.</title>
+            <programlisting><![CDATA[
+(defun fif (if then &optional else)
+  #'(lambda (x)
+      (if (funcall if x)
+          (funcall then x)
+        (if else (funcall else x)))))
+
+(defun fint (fn &rest fns)
+  (if (null fns)
+      fn
+    (let ((chain (apply #'fint fns)))
+      #'(lambda (x)
+          (and (funcall fn x) (funcall chain x))))))
+
+(defun fun (fn &rest fns)
+  (if (null fns)
+      fn
+    (let ((chain (apply #'fun fns)))
+      #'(lambda (x)
+          (or (funcall fn x) (funcall chain x))))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX15" id="IDX15"></a> -->
+        <para>
+            Since not is a Lisp function, complement is a special case of
+            compose. It could be defined as:
+        </para>
+        <programlisting><![CDATA[
+(defun complement (pred)
+  (compose #'not pred))]]>
+        </programlisting>
+        <para>
+            We can combine functions in other ways than by composing them.
+            For example, we often see expressions like
+        </para>
+        <programlisting><![CDATA[
+(mapcar #'(lambda (x)
+            (if (slave x)
+                (owner x)
+              (employer x)))
+        people)]]>
+        </programlisting>
+        <para>
+            We could define an operator to build functions like this one
+            automatically. Using
+            <function>fif</function>
+            from
+            <xref linkend="more-function-builders"/>
+            , we could get the same
+            effect with:
+        </para>
+        <programlisting><![CDATA[
+(mapcar (fif #'slave #'owner #'employer)
+        people)]]>
+        </programlisting>
+        <para>
+            <xref linkend="more-function-builders"/>
+            contains several other constructors
+            for commonly
+            occurring types of functions. The second,
+            <function>fint</function>, is for cases like
+            this:
+        </para>
+        <programlisting><![CDATA[
+(find-if #'(lambda (x)
+             (and (signed x) (sealed x) (delivered x)))
+         docs)]]>
+        </programlisting>
+        <para>
+            The predicate given as the second argument to
+            <function>find-if</function>
+            defines
+            the intersection of the three predicates called within it. With
+            <function>fint</function>, whose name stands for "function intersection," we can
+            say:
+        </para>
+        <programlisting><![CDATA[
+(find-if (fint #'signed #'sealed #'delivered) docs)]]>
+        </programlisting>
+        <para>
+            We can define a similar operator to return the union of a set of
+            predicates. The function
+            <function>fun</function>
+            is like
+            <function>fint</function>
+            but uses
+            <function>or</function>
+            instead of
+            <function>and</function>.
+        </para>
+    </section>
+    <section xml:id="recursion-on-cdrs" xreflabel="Recursion on Cdrs">
+        <title>Recursion on Cdrs</title>
+        <para>
+            Recursive functions are so important in Lisp programs that it
+            would be worth having utilities to build them. This section and the
+            next describe functions which build the two most common types. In
+            Common Lisp, these functions are a little awkward to use. Once we
+            get into the subject of macros, we will see how to put a more
+            elegant facade on this machinery. Macros for building recursers are
+            discussed in Sections 15.2 and 15.3.
+        </para>
+        <para>
+            Repeated patterns in a program are a sign that it could have
+            been written at a higher level of abstraction. What pattern is more
+            commonly seen in Lisp programs than a function like this:
+        </para>
+        <programlisting><![CDATA[
+(defun our-length (lst)
+  (if (null lst)
+      0
+    (1+ (our-length (cdr lst)))))]]>
+        </programlisting>
+        <para>or this:</para>
+        <programlisting><![CDATA[
+(defun our-every (fn lst)
+  (if (null lst)
+      t
+    (and (funcall fn (car lst))
+         (our-every fn (cdr lst)))))]]>
+        </programlisting>
+        <para>
+            Structurally these two functions have a lot in common. They both
+            operate recursively on successive cdrs of a list, evaluating the
+            same expression on each step,
+        </para>
+        <figure xml:id="lrec">
+            <title>Function to define flat list recursers.</title>
+            <programlisting><![CDATA[
+(defun lrec (rec &optional base)
+  (labels ((self (lst)
+                 (if (null lst)
+                     (if (functionp base)
+                         (funcall base)
+                       base)
+                   (funcall rec (car lst)
+                            #'(lambda ()
+                                (self (cdr lst)))))))
+    #'self))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX16" id="IDX16"></a> -->
+        <para>except in the base case, where they return a distinct value.
+            This pattern appears so frequently in Lisp programs that
+            experienced programmers can read and reproduce it without stopping
+            to think. Indeed, the lesson is so quickly learned, that the
+            question of how to package the pattern in a new abstraction does
+            not arise.
+        </para>
+        <para>
+            However, a pattern it is, all the same. Instead of writing these
+            functions out by hand, we should be able to write a function which
+            will generate them for us.
+            <xref linkend="lrec"/>
+            contains a function-builder
+            called
+            <function>lrec</function>
+            ("list recurser") which should be able to generate most
+            functions that recurse on successive cdrs of a list.
+        </para>
+        <para>
+            The first argument to
+            <function>lrec</function>
+            must be a function of two arguments:
+            the current car of the list, and a function which can be called to
+            continue the recursion. Using
+            <function>lrec</function>
+            we could express our-length as:
+        </para>
+        <programlisting><![CDATA[
+(lrec #'(lambda (x f) (1+ (funcall f))) 0)]]>
+        </programlisting>
+        <para>To find the length of the list, we don't need to look at the
+            elements, or stop part- way, so the object x is always ignored, and
+            the function f always called. However, we need to take advantage of
+            both possibilities to express our-every, for e.g. oddp:
+            <footnote>
+                <para>
+                    In one widely used Common Lisp,
+                    <function>functionp</function>
+                    erroneously returns true for
+                    <constant>t</constant>
+                    and
+                    <constant>nil</constant>.
+                    In that implementation it won't work to give either as the
+                    second argument to<function>lrec</function>.
+                </para>
+            </footnote>
+        </para>
+        <programlisting><![CDATA[
+(lrec #'(lambda (x f) (and (oddp x) (funcall f))) t)]]>
+        </programlisting>
+        <para>
+            The definition of
+            <function>lrec</function>
+            uses labels to build a local recursive
+            function called self. In the recursive case the function rec is
+            passed two arguments, the current car of the list, and a function
+            embodying the recursive call. In functions like<function>our-every</function>,
+            where the recursive case is an and, if the first argument returns false
+            we want to stop right there. Which means that the argument passed
+            in the recursive case must not be a value but a function, which we
+            can call (if we want) in order to get a value.
+        </para>
+        <figure xml:id="functions-expressed-with-lrec">
+            <title>Functions expressed with<function>lrec</function>.
+            </title>
+            <programlisting><![CDATA[
+; copy-list
+(lrec #'(lambda (x f) (cons x (funcall f))))
+
+; remove-duplicates
+(lrec #'(lambda (x f) (adjoin x (funcall f))))
+
+; find-if, for some function fn
+(lrec #'(lambda (x f) (if (fn x) x (funcall f))))
+
+; some, for some function fn
+(lrec #'(lambda (x f) (or (fn x) (funcall f))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX17" id="IDX17"></a> -->
+        <para>
+            <xref linkend="functions-expressed-with-lrec"/>
+            shows some existing
+            Common Lisp functions defined with<function>lrec</function>.
+            <footnote>
+                <para>
+                    In some implementations, you may have to set
+                    <varname>*print-circle*</varname>
+                    to
+                    <constant>t</constant>
+                    before
+                    these functions can be displayed.
+                </para>
+            </footnote>
+            Calling
+            <function>lrec</function>
+            will not always yield the
+            most efficient implementation of a given function. Indeed,
+            <function>lrec</function>
+            and
+            the other recurser generators to be defined in this chapter tend to
+            lead one away from tail-recursive solutions. For this reason they
+            are best suited for use in initial versions of a program, or in
+            parts where speed is not critical.
+        </para>
+    </section>
+    <section xml:id="recursion-on-subtrees" xreflabel="Recursion on Subtrees">
+        <title>Recursion on Subtrees</title>
+        <para>
+            There is another recursive pattern commonly found in Lisp
+            programs: recursion on subtrees. This pattern is seen in cases
+            where you begin with a possibly nested list, and want to recurse
+            down both its car and its cdr.
+        </para>
+        <para>
+            The Lisp list is a versatile structure. Lists can represent,
+            among other things, sequences, sets, mappings, arrays, and trees.
+            There are several different ways to interpret a list as a tree. The
+            most common is to regard the list as a binary tree whose left
+            branch is the car and whose right branch is the cdr. (In fact, this
+            is usually the internal representation of lists.)
+            <xref linkend="lists-as-trees"/>
+            shows
+            three examples of lists and the trees they represent. Each internal
+            node in such a tree corresponds to a dot in the dotted-pair
+            representation of the list, so the tree structure may be easier to
+            interpret if the lists are considered in that form:
+        </para>
+        <figure xml:id="lists-as-trees">
+            <title>Lists as trees.</title>
+            <programlisting><![CDATA[
+(a b c) = (a . (b . (c . nil)))
+(a b (c d)) = (a . (b . ((c . (d . nil)) . nil)))]]>
+            </programlisting>
+            <programlisting><![CDATA[
+(a . b) (a b c) (a b (c d))]]>
+            </programlisting>
+        </figure>
+
+        <!-- <a name="IDX18" id="IDX18"></a> -->
+        <para>
+            Any list can be interpreted as a binary tree. Hence the
+            distinction between pairs of Common Lisp functions like
+            <function>copy-list</function>
+            and<function>copy-tree</function>.
+            The former copies a list as a sequence - if the list
+            contains sublists, the sublists, being mere elements in the
+            sequence, are not copied:
+        </para>
+        <programlisting><![CDATA[
+> (setq x '(a b)
+        listx (list x 1))
+((A B) 1)
+> (eq x (car (copy-list listx)))
+T]]>
+        </programlisting>
+        <para>
+            In contrast, copy-tree copies a list as a tree - sublists are
+            subtrees, and so must also be copied:
+        </para>
+        <programlisting><![CDATA[
+> (eq x (car (copy-tree listx)))
+NIL]]>
+        </programlisting>
+        <para>
+            We could define a version of copy-tree as follows:
+        </para>
+        <programlisting><![CDATA[
+(defun our-copy-tree (tree)
+  (if (atom tree)
+      tree
+    (cons (our-copy-tree (car tree))
+          (if (cdr tree) (our-copy-tree (cdr tree))))))]]>
+        </programlisting>
+        <para>
+            This definition turns out to be one instance of a common
+            pattern. (Some of the following functions are written a little
+            oddly in order to make the pattern obvious.) Consider for example a
+            utility to count the number of leaves in a tree:
+        </para>
+        <programlisting><![CDATA[
+(defun count-leaves (tree)
+  (if (atom tree)
+      1
+    (+ (count-leaves (car tree))
+       (or (if (cdr tree) (count-leaves (cdr tree)))
+           1))))]]>
+        </programlisting>
+        <para>
+            A tree has more leaves than the atoms you can see when it is
+            represented as a list:
+        </para>
+        <programlisting><![CDATA[
+> (count-leaves '((a b (c d)) (e) f))
+10]]>
+        </programlisting>
+        <para>
+            The leaves of a tree are all the atoms you can see when you look
+            at the tree in its dotted-pair representation. In dotted-pair
+            notation,
+            <code>((a b (c d)) (e) f)</code>
+            would have four nils that aren't
+            visible in the list representation (one for each pair of
+            parentheses) so count-leaves returns 10.
+        </para>
+        <para>
+            In the last chapter we defined several utilities which operate
+            on trees. For example, flatten (page 47) takes a tree and returns a
+            list of all the atoms in it. That is, if you give flatten a nested
+            list, you'll get back a list that looks the same except that it's
+            missing all but the outermost pair of parentheses:
+        </para>
+        <programlisting><![CDATA[
+> (flatten '((a b (c d)) (e) f ()))
+(A B C D E F)]]>
+        </programlisting>
+        <para>
+            This function could also be defined (somewhat inefficiently) as
+            follows:
+        </para>
+        <programlisting><![CDATA[
+(defun flatten (tree)
+  (if (atom tree)
+      (mklist tree)
+    (nconc (flatten (car tree))
+           (if (cdr tree) (flatten (cdr tree))))))]]>
+        </programlisting>
+        <para>
+            Finally, consider<function>rfind-if</function>, a recursive
+            version of
+            <function>find-if</function>
+            which
+            works on trees as well as flat lists:
+        </para>
+        <programlisting><![CDATA[
+(defun rfind-if (fn tree)
+  (if (atom tree)
+      (and (funcall fn tree) tree)
+    (or (rfind-if fn (car tree))
+        (if (cdr tree) (rfind-if fn (cdr tree))))))]]>
+        </programlisting>
+        <para>
+            To generalize find-if for trees, we have to decide whether we
+            want to search for just leaves, or for whole subtrees. Our
+            <function>rfind-if</function>
+            takes the former approach, so the caller can assume that the
+            function given as the first argument will only be called on
+            atoms:
+        </para>
+        <programlisting><![CDATA[
+> (rfind-if (fint #'numberp #'oddp) '(2 (3 4) 5))
+3]]>
+        </programlisting>
+        <para>
+            How similar in form are these four functions,
+            <function>copy-tree</function>,
+            <function>count-leaves</function>,
+            <function>flatten</function>, and
+            <function>rfind-if</function>. Indeed, they're all instances
+            of an archetypal function for recursion on subtrees. As with
+            recursion on cdrs, we need not leave this archetype to float
+            vaguely in the background - we can write a function to generate
+            instances of it.
+        </para>
+        <para>
+            To get at the archetype itself, let's look at these functions
+            and see what's not pattern. Essentially
+            <function>our-copy-tree</function>
+            is two
+            facts:
+        </para>
+        <orderedlist numeration="arabic">
+            <listitem>
+                <para>In the base case it returns its argument.</para>
+            </listitem>
+            <listitem>
+                <para>
+                    In the recursive case, it applies
+                    <function>cons</function>
+                    to the
+                    recursions down the left (car) and right (cdr) subtrees.
+                </para>
+            </listitem>
+        </orderedlist>
+        <para>
+            We should thus be able to express it as a call to a builder with
+            two arguments:
+        </para>
+        <programlisting><![CDATA[
+(ttrav #'cons #'identity)]]>
+        </programlisting>
+        <para>
+            A definition of
+            <function>ttrav</function>
+            ("tree traverser")
+            is shown in<xref linkend="ttrav"/>.
+            Instead of passing one value in the recursive case, we pass two,
+            one for the left subtree and one for the right. If the base
+            argument is a function it will be called on the current leaf. In
+            flat list recursion, the base case is always nil, but in tree
+            recursion the base case could be an interesting value, and we might
+            want to use it.
+        </para>
+        <para>
+            With
+            <function>ttrav</function>
+            we could express all the
+            preceding functions except<function>rfind-if</function>.
+            (They are shown in
+            <xref linkend="functions-expressed-with-ttrav"/>
+            .)
+            To define
+            <function>rfind-if</function>
+            we need a more general tree recursion builder which gives us control
+            over when, and if, the recursive calls are made. As the first
+            argument to
+            <function>ttrav</function>
+            we gave a function which took
+            the results of the
+            recursive calls. For the general case, we want to use instead a
+            function which takes two closures representing the calls
+            themselves. Then we can write recursers which only traverse as much
+            of the tree as they want to.
+        </para>
+        <figure xml:id="ttrav">
+            <title>Function for recursion on trees.</title>
+            <programlisting><![CDATA[
+(defun ttrav (rec &optional (base #'identity))
+  (labels ((self (tree)
+                 (if (atom tree)
+                     (if (functionp base)
+                         (funcall base tree)
+                       base)
+                   (funcall rec (self (car tree))
+                            (if (cdr tree)
+                                (self (cdr tree)))))))
+    #'self))]]>
+            </programlisting>
+        </figure>
+
+        <!-- <a name="IDX19" id="IDX19"></a> -->
+        <figure xml:id="functions-expressed-with-ttrav">
+            <title>Functions expressed with
+                <function>ttrav</function>
+            </title>
+            <programlisting><![CDATA[
+; our-copy-tree
+(ttrav #'cons)
+
+; count-leaves
+(ttrav #'(lambda (l r) (+ l (or r 1))) 1)
+
+; flatten
+(ttrav #'nconc #'mklist)]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX20" id="IDX20"></a> -->
+        <para>
+            Functions built by
+            <function>ttrav</function>
+            always traverse
+            a whole tree. That's fine for functions like
+            <function>count-leaves</function>
+            or<function>flatten</function>,
+            which have to traverse the whole tree anyway.
+            But we want
+            <function>rfind-if</function>
+            to stop searching as soon
+            as it finds what it's looking for. It must be
+            built by the more general<function>trec</function>, shown in
+            <xref linkend="trec"/>
+            . The second arg to
+            <function>trec</function>
+            should be
+            a function of three arguments: the current
+            object and the two recursers. The latter two will be closures
+            representing the recursions down the left and right subtrees. With
+            <function>trec</function>
+            we would define flatten as:
+        </para>
+        <programlisting><![CDATA[
+(trec #'(lambda (o l r) (nconc (funcall l) (funcall r)))
+      #'mklist)]]>
+        </programlisting>
+        <para>
+            Now we can also express
+            <function>rfind-if</function>
+            for e.g.
+            <function>oddp</function>
+            as:
+        </para>
+        <programlisting><![CDATA[
+(trec #'(lambda (o l r) (or (funcall l) (funcall r)))
+      #'(lambda (tree) (and (oddp tree) tree)))]]>
+        </programlisting>
+        <figure xml:id="trec">
+            <title>Function for recursion on trees.</title>
+            <programlisting><![CDATA[
+(defun trec (rec &optional (base #'identity))
+  (labels
+      ((self (tree)
+             (if (atom tree)
+                 (if (functionp base)
+                     (funcall base tree)
+                   base)
+               (funcall rec tree
+                        #'(lambda ()
+                            (self (car tree)))
+                        #'(lambda ()
+                            (if (cdr tree)
+                                (self (cdr tree))))))))
+    #'self))]]>
+            </programlisting>
+        </figure>
+
+        <!-- <a name="IDX21" id="IDX21"></a> -->
+    </section>
+    <section xml:id="when-to-build-functions" xreflabel="When to Build Functions">
+        <title>When to Build Functions</title>
+        <para>
+            Expressing functions by calls to constructors instead of
+            sharp-quoted lambda-expressions could, unfortunately, entail
+            unnecessary work at runtime. A sharp-quoted lambda-expression is a
+            constant, but a call to a constructor function will be evaluated at
+            runtime. If we really have to make this call at runtime, it might
+            not be worth using constructor functions. However, at least some of
+            the time we can call the constructor beforehand. By using #., the
+            sharp-dot read macro, we can have the new functions built at
+            read-time. So long as compose and its arguments are defined when
+            this expression is read, we could say, for example,
+        </para>
+        <programlisting><![CDATA[
+(find-if #.(compose #'oddp #'truncate) lst)]]>
+        </programlisting>
+        <para>
+            Then the call to compose would be evaluated by the reader, and
+            the resulting function inserted as a constant into our code. Since
+            both
+            <function>oddp</function>
+            and
+            <function>truncate</function>
+            are built-in, it would safe to assume that
+            we can evaluate the compose at read-time, so long as compose itself
+            were already loaded.
+        </para>
+        <para>
+            In general, composing and combining functions is more easily and
+            efficiently done with macros. This is particularly true in Common
+            Lisp, with its separate name-space for functions. After introducing
+            macros, we will in Chapter 15 cover much of the ground we covered
+            here, but in a more luxurious vehicle.
+        </para>
+    </section>
+</chapter>

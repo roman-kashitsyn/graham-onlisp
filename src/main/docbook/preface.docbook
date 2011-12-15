@@ -112,13 +112,13 @@
             When someone asked Louis Armstrong what jazz was, he replied "If
             you have to ask what jazz is, you'll never know." But he did answer
             the question in a way: he showed people what jazz was. That's one
-            way to explain the power of Lisp--to demonstrate techniques that
+            way to explain the power of Lisp - to demonstrate techniques that
             would be difficult or impossible in other languages. Most books on
-            programming--even books on Lisp programming--deal with the kinds of
+            programming - even books on Lisp programming - deal with the kinds of
             programs you could write in any language. On Lisp deals mostly with
             the kinds of programs you could only write in Lisp. Extensibility,
             bottom-up programming, interactive development, source code
-            transformation, embedded languages--this is where Lisp shows to
+            transformation, embedded languages - this is where Lisp shows to
             advantage.
         </para>
         <para>
@@ -135,14 +135,14 @@
             mathematical sense, but in the sense that matters for programming
             languages. That is, if you had to write some of the programs in
             this book in C, you might as well do it by writing a Lisp compiler
-            in C first. Embedding Prolog in C, for example--can you imagine the
+            in C first. Embedding Prolog in C, for example - can you imagine the
             amount of work that would take? Chapter 24 shows how to do it in
             180 lines of Lisp.
         </para>
         <para>
             I hoped to do more than simply demonstrate the power of Lisp,
             though. I also wanted to explain why Lisp is different. This turns
-            out to be a subtle question--too subtle to be answered with phrases
+            out to be a subtle question - too subtle to be answered with phrases
             like "symbolic computation." What I have learned so far, I have
             tried to explain as clearly as I can.
         </para>
@@ -164,7 +164,7 @@
             The remainder of the book deals more with macros than functions.
             Macros receive more attention partly because there is more to say
             about them, and partly because they have not till now been
-            adequately described in print. Chapters 7--10 form a complete
+            adequately described in print. Chapters 7 - 10 form a complete
             tutorial on macro technique. By the end of it you will know most of
             what an experienced Lisp programmer knows about macros: how they
             work; how to define, test, and debug them; when to use macros and
@@ -174,9 +174,9 @@
             that afflict macros.
         </para>
         <para>
-            Following this tutorial, Chapters 11--18 show some of the
+            Following this tutorial, Chapters 11 - 18 show some of the
             powerful abstractions you can build with macros. Chapter 11 shows
-            how to write the classic macros--those which create context, or
+            how to write the classic macros - those which create context, or
             implement loops or conditionals. Chapter 12 explains the role of
             macros in operations on generalized variables. Chapter 13 shows how
             macros can make programs run faster by shifting computation to

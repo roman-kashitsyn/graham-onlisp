@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="utf-8"?>
+<chapter version="5.0"
+         xml:lang="en"
+         xml:id="functions-as-representation"
+         xreflabel="Functions as Representation"
+         xmlns="http://docbook.org/ns/docbook"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:xml="http://www.w3.org/XML/1998/namespace"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         xsi:schemaLocation="http://docbook.org/ns/docbook
+                             http://www.docbook.org/xml/5.0/xsd/docbook.xsd
+                             http://www.w3.org/1999/xlink
+                             http://www.docbook.org/xml/5.0/xsd/xlink.xsd
+                             http://www.w3.org/XML/1998/namespace
+                             http://www.docbook.org/xml/5.0/xsd/xml.xsd">
+    <title>Functions as Representation</title>
+    <para>
+        Generally, data structures are used to represent. An array could
+        represent a geometric transformation; a tree could represent a
+        hierarchy of command; a graph could represent a rail network. In
+        Lisp we can sometimes use closures as a representation. Within a
+        closure, variable bindings can store information, and can also play
+        the role that pointers play in constructing complex data
+        structures. By making a group of closures which share bindings, or
+        can refer to one another, we can create hybrid objects which
+        combine the advantages of data structures and programs.
+    </para>
+    <para>
+        Beneath the surface, shared bindings are pointers. Closures just
+        bring us the convenience of dealing with them at a higher level of
+        abstraction. By using closures to represent something we would
+        otherwise represent with static data structures, we can often
+        expect substantial improvements in elegance and efficiency.
+    </para>
+    <section xml:id="networks">
+        <title>Networks</title>
+        <para>
+            Closures have three useful properties: they are active, they
+            have local state, and we can make multiple instances of them. Where
+            could we use multiple copies of active objects with local state? In
+            applications involving networks, among others. In many cases we can
+            represent nodes in a network as closures. As well as having its own
+            local state, a closure can refer to another closure. Thus a closure
+            representing a node in a network can know of several other nodes
+            (closures) to which it must send its output. This means that we may
+            be able to translate some networks straight into code.
+        </para>
+        <figure xml:id="session-of-twenty-questions">
+            <title>Session of twenty questions.</title>
+            <programlisting><![CDATA[
+> (run-node 'people)
+Is the person a man?
+>> yes
+Is he living?
+>> no
+Was he American?
+>> yes
+Is he on a coin?
+>> yes
+Is the coin a penny?
+>> yes
+LINCOLN]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX22" id="IDX22"></a> -->
+        <para>
+            In this section and the next we will look at two ways to
+            traverse a network. First we will follow the traditional approach,
+            with nodes defined as structures, and separate code to traverse the
+            network. Then in the next section we'll show how to build the same
+            program from a single abstraction.
+        </para>
+        <para>
+            As an example, we will use about the simplest application
+            possible: one of those programs that play twenty questions. Our
+            network will be a binary tree. Each non-leaf node will contain a
+            yes/no question, and depending on the answer to the question, the
+            traversal will continue down the left or right subtree. Leaf nodes
+            will contain return values. When the traversal reaches a leaf node,
+            its value will be returned as the value of the traversal. A session
+            with this program might look as in
+            <xref linkend="session-of-twenty-questions"/>
+        </para>
+        <para>
+            The traditional way to begin would be to define some sort of
+            data structure to represent nodes. A node is going to have to know
+            several things: whether it is a leaf; if so, which value to return,
+            and if not, which question to ask; and where to go depending on the
+            answer. A sufficient data structure is defined in
+            <xref linkend="definition-of-nodes"/>.
+            It is
+            designed for minimal size. The contents field will contain either a
+            question or a return value. If the node is not a leaf, the yes and
+            no fields will tell where to go depending on the answer to the
+            question; if the node is a leaf, we will know it because these
+            fields are empty. The global <varname>*nodes*</varname>
+            will be a hash-table in which nodes are indexed by name. Finally,
+            <function>defnode</function> makes a new node (of
+            either type) and stores it in <varname>*nodes*</varname>.
+            Using these materials we could define the first node of our tree:
+        </para>
+        <programlisting><![CDATA[
+(defnode 'people "Is the person a man?"
+  'male 'female)]]>
+        </programlisting>
+        <figure xml:id="definition-of-nodes">
+            <title>Representation and definition of nodes.</title>
+            <programlisting><![CDATA[
+(defstruct node contents yes no)
+
+(defvar *nodes* (make-hash-table))
+
+(defun defnode (name conts &amp;optional yes no)
+  (setf (gethash name *nodes*)
+        (make-node :contents conts
+                   :yes yes
+                   :no no)))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX23" id="IDX23"></a> -->
+        <figure xml:id="sample-network">
+            <title>Sample network.</title>
+            <programlisting><![CDATA[
+(defnode 'people "Is the person a man?" 'male 'female)
+(defnode 'male "Is he living?" 'liveman 'deadman)
+(defnode 'deadman "Was he American?" 'us 'them)
+(defnode 'us "Is he on a coin?" 'coin 'cidence)
+(defnode 'coin "Is the coin a penny?" 'penny 'coins)
+(defnode 'penny 'lincoln)]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX24" id="IDX24"></a> -->
+        <para>
+            <xref linkend="sample-network"/>
+            shows as much of
+            the network as we need to produce the transcript in
+            <xref linkend="session-of-twenty-questions"/>.
+        </para>
+        <para>
+            Now all we need to do is write a function to traverse this
+            network, printing out the questions and following the indicated
+            path. This function, run-node, is shown in
+            <xref linkend="function-for-traversing-networks"/>
+            . Given a
+            name, we look up the corresponding node. If it is not a leaf, the
+            contents are asked as a question, and depending on the answer, we
+            continue traversing at one of two possible destinations. If the
+            node is a leaf, run-node just returns its contents. With the
+            network defined in<xref linkend="sample-network"/>, this function
+            produces the output
+            shown in<xref linkend="session-of-twenty-questions"/>.
+        </para>
+        <figure xml:id="function-for-traversing-networks">
+            <title>Function for traversing networks.</title>
+            <programlisting><![CDATA[
+(defun run-node (name)
+  (let ((n (gethash name *nodes*)))
+    (cond ((node-yes n)
+           (format t "~A~%>> " (node-contents n))
+           (case (read)
+             (yes (run-node (node-yes n)))
+             (t (run-node (node-no n)))))
+          (t (node-contents n)))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX25" id="IDX25"></a> -->
+        <figure xml:id="network-compiled-into-closures">
+            <title>A network compiled into closures.</title>
+            <programlisting><![CDATA[
+(defvar *nodes* (make-hash-table))
+
+(defun defnode (name conts &optional yes no)
+  (setf (gethash name *nodes*)
+        (if yes
+            #'(lambda ()
+                (format t "~A~%>> " conts)
+                (case (read)
+                  (yes (funcall (gethash yes *nodes*)))
+                  (t (funcall (gethash no *nodes*)))))
+          #'(lambda () conts))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX26" id="IDX26"></a> -->
+    </section>
+    <section xml:id="compiling-networks">
+        <title>Compiling Networks</title>
+        <para>
+            In the preceding section we wrote a network program as it might
+            have been written in any language. Indeed, the program is so simple
+            that it seems odd to think that we could write it any other way.
+            But we can--in fact, we can write it much more simply.
+        </para>
+        <para>
+            The code in
+            <xref linkend="network-compiled-into-closures"/>
+            illustrates this point. It's all we
+            really need to run our network. Instead of having nodes as data
+            structures and a separate function to traverse them, we represent
+            the nodes as closures. The data formerly contained in the
+            structures gets stored in variable bindings within the closures.
+            Now there is no need for run-node; it is implicit in the nodes
+            themselves. To start the traversal, we just
+            <function>funcall</function>
+            the node at which we want to begin:
+        </para>
+        <programlisting><![CDATA[
+(funcall (gethash 'people *nodes*))]]>
+        </programlisting>
+        <programlisting><![CDATA[
+Is the person a man?
+>>]]>
+        </programlisting>
+        <figure xml:id="compilation-with-static-references">
+            <title>Compilation with static references.</title>
+            <programlisting><![CDATA[
+(defvar *nodes* nil)
+
+(defun defnode (&rest args)
+  (push args *nodes*)
+  args)
+
+(defun compile-net (root)
+  (let ((node (assoc root *nodes*)))
+    (if (null node)
+        nil
+      (let ((conts (second node))
+            (yes (third node))
+            (no (fourth node)))
+        (if yes
+            (let ((yes-fn (compile-net yes))
+                  (no-fn (compile-net no)))
+              #'(lambda ()
+                  (format t "~A~%>> " conts)
+                  (funcall (if (eq (read) 'yes)
+                               yes-fn
+                             no-fn))))
+          #'(lambda () conts))))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX27" id="IDX27"></a> -->
+        <para>
+            From then on, the transcript will be just as it was with the
+            previous implementation.
+        </para>
+        <para>
+            By representing the nodes as closures, we are able to transform
+            our twenty-questions network entirely into code. As it is, the code
+            will have to look up the node functions by name at runtime.
+            However, if we know that the network is not going to be redefined
+            on the fly, we can add a further enhancement: we can have node
+            functions call their destinations directly, without having to go
+            through a hash-table.
+        </para>
+        <para>
+            <xref linkend="compilation-with-static-references"/>
+            contains a new version of the program. Now <varname>*nodes*</varname>
+            is a disposable list instead of a hash-table. All the nodes are
+            defined with <function>defnode</function>
+            as before, but no closures are generated at
+            this point. After all the nodes have been defined, we call
+            compile-net to compile a whole network at once. This function
+            recursively works its way right down to the leaves of the tree, and
+            on the way back up, returns at each step the node/function for each
+            of the two subtrees.
+            <footnote>
+                <para>
+                    This version assumes that the network is a tree,
+                    which it must be in this application.
+                </para>
+            </footnote>
+            So now each node will have a direct
+            handle on its two destinations, instead of having only their names.
+            When the original call to compile-net returns, it will yield a
+            function representing the portion of the network we asked to have
+            compiled.
+        </para>
+        <programlisting><![CDATA[
+> (setq n (compile-net 'people))
+#<Compiled-Function BF3C06>
+> (funcall n)
+Is the person a man?
+>>]]>
+        </programlisting>
+        <para>
+            Notice that compile-net compiles in both senses. It compiles in
+            the general sense, by translating the abstract representation of
+            the network into code. Moreover, if
+            <function>compile-net</function> itself is compiled,
+            it will return compiled functions. (See page 25.)
+        </para>
+        <para>
+            After compiling the network, we will no longer need the list
+            made by <function>defnode</function>. It can be cut loose
+            (e.g. by setting <varname>*nodes*</varname> to
+            <constant>nil</constant>) and reclaimed by the garbage collector.
+        </para>
+    </section>
+    <section xml:id="looking-forward">
+        <title>Looking Forward</title>
+        <para>
+            Many programs involving networks can be implemented by compiling
+            the nodes into closures. Closures are data objects, and they can be
+            used to represent things just as structures can. Doing so requires
+            some unconventional thinking, but the rewards are faster and more
+            elegant programs.
+        </para>
+        <para>
+            Macros help substantially when we use closures as a
+            representation. "To represent with closures" is another way of
+            saying "to compile," and since macros do their work at
+            compile-time, they are a natural vehicle for this technique. After
+            macros have been introduced, Chapters 23 and 24 will present much
+            larger programs based on the strategy used here.
+        </para>
+    </section>
+</chapter>

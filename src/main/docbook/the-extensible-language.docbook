@@ -113,8 +113,8 @@
             you have a real program to focus your attention; and they turn out
             better, because the final design is always a product of evolution.
             So long as you maintain a certain discipline while searching for
-            your program's destiny--so long as you always rewrite mistaken
-            parts as soon as it becomes clear that they're mistaken--the final
+            your program's destiny - so long as you always rewrite mistaken
+            parts as soon as it becomes clear that they're mistaken - the final
             product will be a program more elegant than if you had spent weeks
             planning it beforehand.
         </para>
@@ -146,13 +146,13 @@
             subroutines. The first subroutine has to do these four things, so
             it in turn will have four of its own subroutines," and so on. This
             process continues until the whole program has the right level of
-            granularity--each part large enough to do something substantial,
+            granularity - each part large enough to do something substantial,
             but small enough to be understood as a single unit.
         </para>
         <para>
             Experienced Lisp programmers divide up their programs
             differently. As well as top-down design, they follow a principle
-            which could be called bottom-up design--changing the language to
+            which could be called bottom-up design - changing the language to
             suit the problem. In Lisp, you don't just write your program down
             toward the language, you also build the language up toward your
             program. As you're writing a program you may think "I wish Lisp had
@@ -213,8 +213,9 @@
                     asks the reader to understand a special-purpose subroutine.
                     <footnote>
                         <para>
-                            "But no one can read the program without understanding all your new utilities."
-                            To see why such statements are usually mistaken, see Section 4.8.
+                            "But no one can read the program without understanding
+                            all your new utilities." To see why such statements
+                            are usually mistaken, see Section <xref linkend="density"/>.
                         </para>
                     </footnote>
                 </para>
@@ -234,7 +235,7 @@
             other than Lisp. Whenever you see library functions, bottom-up
             design is happening. However, Lisp gives you much broader powers in
             this department, and augmenting the language plays a
-            proportionately larger role in Lisp style--so much so that Lisp is
+            proportionately larger role in Lisp style - so much so that Lisp is
             not just a different language, but a whole different way of
             programming.
         </para>
@@ -302,20 +303,20 @@
             communicating with one another through some predefined channel. In
             Lisp, extensions can have direct access to the entire underlying
             program. This is not to say that you have to give users access to
-            every part of your program--just that you now have a choice about
+            every part of your program - just that you now have a choice about
             whether to give them access or not.
         </para>
         <para>
             When this degree of access is combined with an interactive
             environment, you have extensibility at its best. Any program that
             you might use as a foundation for extensions of your own is likely
-            to be fairly big--too big, probably, for you to have a complete
+            to be fairly big - too big, probably, for you to have a complete
             mental picture of it. What happens when you're unsure of something?
             If the original program is written in Lisp, you can probe it
             interactively: you can inspect its data structures; you can call
             its functions; you may even be able to look at the original source
             code. This kind of feedback allows you to program with a high
-            degree of confidence--to write more ambitious extensions, and to
+            degree of confidence - to write more ambitious extensions, and to
             write them faster. An interactive environment always makes
             programming easier, but it is nowhere more valuable than when one
             is writing extensions.
@@ -356,7 +357,9 @@
             define a new mapping function map1-n (see page 54), and then call
             it as follows:
         </para>
-        <programlisting><![CDATA[(map1-n fn 10)]]></programlisting>
+        <programlisting><![CDATA[
+(map1-n fn 10)]]>
+        </programlisting>
         <para>
             Defining functions is comparatively straightforward. Macros
             provide a more general, but less well-understood, means of defining
@@ -436,14 +439,14 @@
             features--- dynamic storage allocation and garbage collection,
             runtime typing, functions as objects, a built-in parser which
             generates lists, a compiler which accepts programs expressed as
-            lists, an interactive environment, and so on--but the power of Lisp
+            lists, an interactive environment, and so on - but the power of Lisp
             cannot be traced to any single one of them. It is the combination
             which makes Lisp programming what it is.
         </para>
         <para>
             Over the past twenty years, the way people program has changed.
-            Many of these changes--interactive environments, dynamic linking,
-            even object-oriented programming--have been piecemeal attempts to
+            Many of these changes - interactive environments, dynamic linking,
+            even object-oriented programming - have been piecemeal attempts to
             give other languages some of the flexibility of Lisp. The metaphor
             of the arch suggests how well they have succeeded.
         </para>

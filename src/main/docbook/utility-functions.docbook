@@ -73,7 +73,7 @@
         </programlisting>
         <para>
             A more experienced Lisp programmer can look at such a function
-            and say "Ah, what you really want is <code>mapcan</code>." Then instead of
+            and say "Ah, what you really want is <function>mapcan</function>." Then instead of
             having to define and call a new function to find all the nicknames
             of a group of people, you can use a single expression:
         </para>
@@ -85,7 +85,7 @@
             general-purpose operator.
         </para>
         <para>
-            In this case the operator, <code>mapcan</code>, already exists. Anyone who
+            In this case the operator, <function>mapcan</function>, already exists. Anyone who
             knew about mapcanwould feel a little uncomfortable looking at
             all-nicknames. To be good at bottom-up programming is to feel
             equally uncomfortable when the missing operator is one which hasn't
@@ -124,7 +124,7 @@
         </programlisting>
         <para>
             Then calling (find-books towns) would at least get us what we
-            wanted with no more computation than necessary. But wait--isn't it
+            wanted with no more computation than necessary. But wait - isn't it
             likely that at some time in the future we will want to do the same
             kind of search again? What we really want here is a utility which
             combines find-if and some, returning both the successful element,
@@ -146,7 +146,8 @@
             the new utility, we can achieve our original aim with a single
             expression:
         </para>
-        <programlisting><![CDATA[(find2 #'bookshops towns)]]></programlisting>
+        <programlisting><![CDATA[
+(find2 #'bookshops towns)]]></programlisting>
         <para>
             One of the unique characteristics of Lisp programming is the
             important role of functions as arguments. This is part of why Lisp
@@ -164,8 +165,8 @@
             functions as arguments. In both of the previous examples we went
             from a specific function to a more general function which took a
             functional argument. In the first case we used the predefined
-            <code>mapcan</code> and in the second we wrote a new utility,
-            <code>find2</code>, but the
+            <function>mapcan</function> and in the second we wrote a new utility,
+            <function>find2</function>, but the
             general principle is the same: instead of mixing the general and
             the specific, define the general and pass the specific as an
             argument.
@@ -188,7 +189,7 @@
         <para>
             From this point of view, the writing of utilities should be
             treated as a capital expenditure. By replacing find-books with the
-            utility <code>find2</code>, we end up with just as many lines of code.
+            utility <function>find2</function>, we end up with just as many lines of code.
             But we have made the program shorter in one sense, because the length of
             the utility does not have to be charged against the current
             program.
@@ -215,7 +216,7 @@
             utility and make it generally accessible.
         </para>
         <para>
-            The utility <code>find2</code> seems to be a good investment. By making a
+            The utility <function>find2</function> seems to be a good investment. By making a
             capital outlay of 7 lines, we get an immediate savings of 7. The
             utility has paid for itself in the first use. A programming
             language, Guy Steele wrote, should "cooperate with our natural
@@ -291,7 +292,9 @@
             dialects, operations on lists can still make up the greater part of
             a Lisp program.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="small-functions-on-lists">
+            <title>Small functions which operate on lists.</title>
+            <programlisting><![CDATA[
 (proclaim '(inline last1 single append1 conc1 mklist))
 
 (defun last1 (lst)
@@ -308,14 +311,16 @@
 
 (defun mklist (obj)
   (if (listp obj) obj (list obj)))]]>
-        </programlisting>
-        <para>Figure 4.1: Small functions which operate on lists.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX4" id="IDX4"></a> -->
         <para>
-            Figures 4.1 and 4.2 contain a selection of functions which build
-            or examine lists. Those given in Figure 4.1 are among the smallest
-            utilities worth defining. For efficiency, they should all be
-            declared inline (page 26).
+            <xref linkend="small-functions-on-lists"/> and
+            <xref linkend="larger-functions-on-lists"/>
+            contain a selection of functions which build
+            or examine lists. Those given in <xref linkend="small-functions-on-lists"/>
+            are among the smallest utilities worth defining. For efficiency,
+            they should all be declared inline (page 26).
         </para>
         <para>
             The first, last1, returns the last element in a list. The
@@ -348,21 +353,22 @@ Broken at LAST...]]>
             first one might be tempted to use the natural translation from
             English:
         </para>
-        <programlisting><![CDATA[(= (length lst) 1)]]></programlisting>
+        <programlisting><![CDATA[
+(= (length lst) 1)]]></programlisting>
         <para>
             Written this way, the test would be very inefficient. We know
             all we need to know as soon as we've looked past the first
             element.
         </para>
         <para>
-            Next come <code>append1</code> and <code>conc1</code>. Both attach
+            Next come <function>append1</function> and <function>conc1</function>. Both attach
             a new element to the
             end of a list, the latter destructively. These functions are small,
             but so frequently needed that they are worth defining. Indeed,
             append1 has been predefined in previous Lisp dialects.
         </para>
         <para>
-            So has <code>mklist</code>, which was predefined in (at least)
+            So has <function>mklist</function>, which was predefined in (at least)
             Interlisp. Its
             purpose is to ensure that something is a list. Many Lisp functions
             are written to return either a single value or a list of values.
@@ -375,7 +381,8 @@ Broken at LAST...]]>
         data)]]>
         </programlisting>
         <para>
-            Figure 4.2 contains some larger examples of list utilities. The
+            <xref linkend="larger-functions-on-lists"/> contains some
+            larger examples of list utilities. The
             first, longer, is useful from the point of view of efficiency as
             well as abstraction. It compares two sequences and returns true
             only if the first is longer. When comparing the lengths of two
@@ -398,10 +405,11 @@ Broken at LAST...]]>
             arguments are lists.
         </para>
         <para>
-            The next function, filter, is to some what <code>remove-if-not</code>
-            is to <code>find-if</code>. The built-in <code>remove-if-not</code>
+            The next function, filter, is to some what
+            <function>remove-if-not</function> is to <function>find-if</function>.
+            The built-in <function>remove-if-not</function>
             returns all the values that might have been returned if you called
-            <code>find-if</code> with the same
+            <function>find-if</function> with the same
             function on successive cdrs of a list. Analogously, filter returns
             what some would have returned for successive cdrs of the list:
         </para>
@@ -410,7 +418,9 @@ Broken at LAST...]]>
 '(a 1 2 b 3 c d 4))
 (2 3 4 5)]]>
         </programlisting>
-        <programlisting><![CDATA[[
+        <figure xml:id="larger-functions-on-lists">
+            <title>Larger functions that operate on lists.</title>
+            <programlisting><![CDATA[[
 (defun longer (x y)
   (labels ((compare (x y)
                     (and (consp x)
@@ -435,8 +445,8 @@ Broken at LAST...]]>
                       (rec rest (cons (subseq source 0 n) acc))
                     (nreverse (cons source acc))))))
     (if source (rec source nil) nil)))]]>
-        </programlisting>
-        <para>Figure 4.2: Larger functions that operate on lists.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX5" id="IDX5"></a> -->
         <para>
             You give filter a function and a list, and get back a list of
@@ -454,7 +464,8 @@ Broken at LAST...]]>
             list.
         </para>
         <para>
-            The last function in Figure 4.2 is for grouping lists into
+            The last function in <xref linkend="larger-functions-on-lists"/>
+            is for grouping lists into
             sublists. You give group a list l and a number n, and it will
             return a new list in which the elements of l are grouped into
             sublists of length n. The remainder is put in a final sublist. Thus
@@ -490,8 +501,10 @@ Broken at LAST...]]>
             reappear at several points in later chapters.
         </para>
         <para>
-            The functions in Figure 4.2 all work their way along the
-            top-level structure of a list. Figure 4.3 shows two examples of
+            The functions in <xref linkend="larger-functions-on-lists"/>
+            all work their way along the
+            top-level structure of a list. <xref linkend="doubly-recursive-list-utilities"/>
+            shows two examples of
             functions that descend into nested lists. The first, flatten, was
             also predefined in Interlisp. It returns a list of all the atoms
             that are elements of a list, or elements of its elements, and so
@@ -502,8 +515,10 @@ Broken at LAST...]]>
 (A B C D E F)]]>
         </programlisting>
         <para>
-            The other function in Figure 4.3, prune, is to remove-if as
-            copy-tree is to copy-list. That is, it recurses down into
+            The other function in <xref linkend="doubly-recursive-list-utilities"/> ,
+            <function>prune</function>, is to <function>remove-if</function>
+            as <function>copy-tree</function> is to
+            <function>copy-list</function>. That is, it recurses down into
             sublists:
         </para>
         <programlisting><![CDATA[
@@ -519,10 +534,13 @@ Broken at LAST...]]>
             lists. Common Lisp provides a rich set of built-in operators for
             this purpose, but some tasks are still difficult--or at least
             difficult to perform efficiently. We saw this in the hypothetical
-            case described on page 41. The first utility in Figure 4.4,
-            <code>find2</code>, is the one we defined in response to it.
+            case described on page 41. The first utility in
+            <xref linkend="doubly-recursive-list-utilities"/> ,
+            <function>find2</function>, is the one we defined in response to it.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="doubly-recursive-list-utilities">
+            <title>Doubly-recursive list utilities.</title>
+            <programlisting><![CDATA[
 (defun flatten (x)
   (labels ((rec (x acc)
                 (cond ((null x) acc)
@@ -541,8 +559,8 @@ Broken at LAST...]]>
                                   acc
                                 (cons (car tree) acc)))))))
     (rec tree nil)))]]>
-        </programlisting>
-        <para>Figure 4.3: Doubly-recursive list utilities.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX6" id="IDX6"></a> -->
         <para>
             The next utility, before, is written with similar intentions. It
@@ -562,7 +580,7 @@ Broken at LAST...]]>
             But the latter idiom is inefficient and error-prone: inefficient
             because we don't need to find both objects, only the one that
             occurs first; and error-prone because if either object isn't in the
-            list, nil will be passed as an argument to <code>&lt;</code>. Using
+            list, nil will be passed as an argument to <function>&lt;</function>. Using
             before fixes both problems.
         </para>
         <para>
@@ -573,7 +591,9 @@ Broken at LAST...]]>
             useful information: the cdr beginning with the object given as the
             first argument.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="functions-search-lists">
+            <title>Functions which search lists.</title>
+            <programlisting><![CDATA[
 (defun find2 (fn lst)
   (if (null lst)
       nil
@@ -603,8 +623,8 @@ Broken at LAST...]]>
         ((or (null src) (funcall fn (car src)))
          (values (nreverse acc) src))
       (push (car src) acc))))]]>
-        </programlisting>
-        <para>Figure 4.4: Functions which search lists.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX7" id="IDX7"></a> -->
         <para>
             Note that before returns true if we encounter the first argument
@@ -648,7 +668,8 @@ NIL]]>
             seems natural to represent falsity as the empty sequence.
         </para>
         <para>
-            The last function in Figure 4.4 is also a kind of generalization
+            The last function in <xref linkend="functions-search-lists"/> is
+            also a kind of generalization
             of member. While member returns the cdr of the list beginning with
             the element it finds, split-if returns both halves. This utility is
             mainly used with lists that are ordered in some respect:
@@ -660,7 +681,8 @@ NIL]]>
 (5 6 7 8 9 10)]]>
         </programlisting>
         <para>
-            Figure 4.5 contains search functions of another kind: those
+            <xref linkend="search-functions-compare-elems"/>
+            contains search functions of another kind: those
             which compare elements against one another. The first, most, looks
             at one element at a time. It takes a list and a scoring function,
             and returns the element with the highest score. In case of ties,
@@ -680,7 +702,9 @@ NIL]]>
             predicate of two arguments. It returns the element which, according
             to the predicate, beats all the others.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="search-functions-compare-elems">
+            <title>Search functions which compare elements.</title>
+            <programlisting><![CDATA[
 (defun most (fn lst)
   (if (null lst)
       (values nil nil)
@@ -715,25 +739,23 @@ NIL]]>
                 ((= score max)
                  (push obj result)))))
       (values (nreverse result) max))))]]>
-        </programlisting>
-        <para>
-            Figure 4.5: Search functions which compare elements.
-        </para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX8" id="IDX8"></a> -->
         <programlisting><![CDATA[
 > (best #'> '(1 2 3 4 5))
 5]]>
         </programlisting>
         <para>
-            We can think of best as being equivalent to <code>car</code>
-            of <code>sort</code>, but
+            We can think of best as being equivalent to <function>car</function>
+            of <function>sort</function>, but
             much more efficient. It is up to the caller to provide a predicate
             which defines a total order on the elements of the list. Otherwise
             the order of the elements will influence the result; as before, in
             case of ties, the first element wins.
         </para>
         <para>
-            Finally, <code>mostn</code> takes a function and a list and
+            Finally, <function>mostn</function> takes a function and a list and
             returns a list of
             all the elements for which the function yields the highest score
             (along with the score itself):</para>
@@ -747,31 +769,37 @@ NIL]]>
         <para>
             Another widely used class of Lisp functions are the mapping
             functions, which apply a function to a sequence of arguments.
-            Figure 4.6 shows some examples of new mapping functions. The first
+            <xref linkend="mapping-functions"/> shows some examples of
+            new mapping functions. The first
             three are for applying a function to a range of numbers without
-            having to cons up a list to contain them. The first two, <code>map0-n</code>
-            and <code>map1-n</code>, work for ranges of positive integers:
+            having to cons up a list to contain them. The first two,
+            <function>map0-n</function> and <function>map1-n</function>,
+            work for ranges of positive integers:
         </para>
         <programlisting><![CDATA[
 > (map0-n #'1+ 5)
 (1 2 3 4 5 6)]]>
         </programlisting>
-        <para>Both are written using the more general mapa-b, which works for
-        any range of numbers:</para>
+        <para>
+            Both are written using the more general <function>mapa-b</function>,
+            which works for any range of numbers:
+        </para>
         <programlisting><![CDATA[
 > (mapa-b #'1+ -2 0 .5)
 (-1 -0.5 0.0 0.5 1.0)]]>
         </programlisting>
         <para>
-            Following <code>mapa-b</code> is the still more general <code>map-&gt;</code>,
-            which works
+            Following <function>mapa-b</function> is the still more general
+            <function>map-&gt;</function>, which works
             for sequences of objects of any kind. The sequence begins with the
             object given as the second argument, the end of the sequence is
             defined by the function given as the third argument, and successors
             are generated by the function given as the fourth argument. With
-            <code>map-&gt;</code> it is possible to navigate arbitrary data structures, as
-            well as operate on sequences of numbers. We could define <code>mapa-b</code> in
-            terms of <code>map-&gt;</code> as follows:</para>
+            <function>map-&gt;</function> it is possible to navigate arbitrary
+            data structures, as well as operate on sequences of numbers.
+            We could define <function>mapa-b</function> in
+            terms of <function>map-&gt;</function> as follows:
+        </para>
         <programlisting><![CDATA[
 (defun mapa-b (fn a b &optional (step 1))
   (map-> fn
@@ -779,7 +807,9 @@ NIL]]>
          #'(lambda (x) (> x b))
          #'(lambda (x) (+ x step))))]]>
         </programlisting>
-        <programlisting><![CDATA[
+        <figure xml:id="mapping-functions">
+            <title>Mapping functions.</title>
+            <programlisting><![CDATA[
 (defun map0-n (fn n)
   (mapa-b fn 0 n))
 
@@ -815,11 +845,11 @@ NIL]]>
            #'(lambda (&rest args)
                (apply #'rmapcar fn args))
            args)))]]>
-        </programlisting>
-        <para>Figure 4.6: Mapping functions.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX9" id="IDX9"></a> -->
         <para>
-            For efficiency, the built-in <code>mapcan</code> is destructive.
+            For efficiency, the built-in <function>mapcan</function> is destructive.
             It could be duplicated by:
         </para>
         <programlisting><![CDATA[
@@ -827,19 +857,20 @@ NIL]]>
   (apply #'nconc (apply #'mapcar fn lsts)))]]>
         </programlisting>
         <para>
-            Because <code>mapcan</code> splices together lists with <code>nconc</code>,
-            the lists
+            Because <function>mapcan</function> splices together lists with
+            <function>nconc</function>, the lists
             returned by the first argument had better be newly created, or the
             next time we look at them they might be altered. That's why
             nicknames (page 41) was defined as a function which "builds a list"
             of nicknames. If it simply returned a list stored elsewhere, it
-            wouldn't have been safe to use <code>mapcan</code>. Instead we would have had to
-            splice the returned lists with append. For such cases, <code>mappend</code>
-            offers a nondestructive alternative to <code>mapcan</code>.
+            wouldn't have been safe to use <function>mapcan</function>.
+            Instead we would have had to splice the returned lists with append.
+            For such cases, <function>mappend</function>
+            offers a nondestructive alternative to <function>mapcan</function>.
         </para>
         <para>
-            The next utility, <code>mapcars</code>, is for cases where we want to
-            <code>mapcar</code>
+            The next utility, <function>mapcars</function>, is for cases where
+            we want to <function>mapcar</function>
             a function over several lists. If we have two lists of numbers and
             we want to get a single list of the square roots of both, using raw
             Lisp we could say
@@ -848,18 +879,19 @@ NIL]]>
 (mapcar #'sqrt (append list1 list2))]]>
         </programlisting>
         <para>
-            but this conses unnecessarily. We append together list1 and
-            list2 only to discard the result immediately. With <code>mapcars</code>
-            we can get the same result from:
+            but this conses unnecessarily. We append together <parameter>list1</parameter>
+            and <parameter>list2</parameter> only to discard the result immediately. With
+            <function>mapcars</function> we can get the same result from:
         </para>
         <programlisting><![CDATA[
 (mapcars #'sqrt list1 list2)]]>
         </programlisting>
         <para>and do no unnecessary consing.</para>
         <para>
-            The final function in Figure 4.6 is a version of <code>mapcar</code> for
-            trees. Its name, <code>rmapcar</code>, is short for "recursive mapcar,"
-            and what <code>mapcar</code> does on flat lists, it does on trees:
+            The final function in <xref linkend="mapping-functions"/> is a
+            version of <function>mapcar</function> for
+            trees. Its name, <function>rmapcar</function>, is short for "recursive mapcar,"
+            and what <function>mapcar</function> does on flat lists, it does on trees:
         </para>
         <programlisting><![CDATA[
 > (rmapcar #'princ '(1 2 (3 4 (5) 6) 7 (8 9)))
@@ -867,7 +899,7 @@ NIL]]>
 (1 2 (3 4 (5) 6) 7 (8 9))]]>
         </programlisting>
         <para>
-            Like <code>mapcar</code>, it can take more than one list argument.
+            Like <function>mapcar</function>, it can take more than one list argument.
         </para>
         <programlisting><![CDATA[
 > (rmapcar #'+ '(1 (2 (3) 4)) '(10 (20 (30) 40)))
@@ -875,7 +907,7 @@ NIL]]>
         </programlisting>
         <para>
             Several of the functions which appear later on ought really to
-            call <code>rmapcar</code>, including rep on page 324.
+            call <function>rmapcar</function>, including rep on page 324.
         </para>
         <para>
             To some extent, traditional list mapping functions may be
@@ -889,7 +921,9 @@ NIL]]>
         <programlisting><![CDATA[
 (collect (#Mfn (scan-range :from a :upto b :by c)))]]>
         </programlisting>
-        <programlisting><![CDATA[
+        <figure xml:id="io-functions">
+            <title>I/O functions.</title>
+            <programlisting><![CDATA[
 (defun readlist (&rest args)
   (values (read-from-string
            (concatenate 'string "("
@@ -907,23 +941,26 @@ NIL]]>
      (if (funcall quit in)
          (return)
        (format *query-io* "~A~%" (funcall fn in))))))]]>
-        </programlisting>
-        <para>Figure 4.7: I/O functions.</para>
+            </programlisting>
+        </figure>
+
         <!-- <a name="IDX10" id="IDX10"></a> -->
         <para>
             However, there is still some call for mapping functions. A
             mapping function may in some cases be clearer or more elegant. Some
-            things we could express with <code>map-&gt;</code> might be difficult to express
-            using series. Finally, mapping functions, as functions, can be
-            passed as arguments.
+            things we could express with <function>map-&gt;</function> might
+            be difficult to express using series. Finally, mapping functions,
+            as functions, can be passed as arguments.
         </para>
     </section>
     <section xml:id="IO" xreflabel="I/O">
         <title>I/O</title>
         <para>
-            Figure 4.7 contains three examples of I/O utilities. The need
+            <xref linkend="io-functions"/>
+            contains three examples of I/O utilities. The need
             for this kind of utility varies from program to program. Those in
-            Figure 4.7 are just a representative sample. The first is for the
+            <xref linkend="io-functions"/> are just a representative sample.
+            The first is for the
             case where you want users to be able to type in expressions without
             parentheses; it reads a line of input and returns it as a list:
         </para>
@@ -950,7 +987,8 @@ Enter a number between 1 and 10.
         </programlisting>
         <para>
             Finally, break-loop is for situations where you want to imitate
-            the Lisp toplevel. It takes two functions and an <code>&amp;rest</code>
+            the Lisp toplevel. It takes two functions and an
+            <parameter>&amp;rest</parameter>
             argument, which is repeatedly given to prompt. As long as the
             second function returns false for the input, the first function is
             applied to it. So for example we could simulate the actual Lisp
@@ -966,7 +1004,7 @@ Entering break-loop.
         </programlisting>
         <para>
             This, by the way, is the reason Common Lisp vendors generally
-            insist on runtime licenses. If you can call <code>eval</code> at
+            insist on runtime licenses. If you can call <function>eval</function> at
             runtime, then any Lisp program can include Lisp.
         </para>
     </section>
@@ -975,27 +1013,30 @@ Entering break-loop.
         <para>
             Symbols and strings are closely related. By means of printing
             and reading functions we can go back and forth between the two
-            representations. Figure 4.8 contains examples of utilities which
-            operate on this border. The first, <code>mkstr</code>, takes any number of
-            arguments and concatenates their printed representations into a
-            string:
+            representations. <xref linkend="functions-on-symb-and-str"/>
+            contains examples of utilities which
+            operate on this border. The first, <function>mkstr</function>,
+            takes any number of arguments and concatenates their printed
+            representations into a string:
         </para>
         <programlisting><![CDATA[
 > (mkstr pi " pieces of " 'pi)]]>
         </programlisting>
         <para>
-            "3.141592653589793 pieces of PI" Built upon it is <code>symb</code>,
+            "3.141592653589793 pieces of PI" Built upon it is <function>symb</function>,
             which is mostly used for building symbols. It takes one or more arguments
             and returns the symbol (creating one if necessary) whose print-name
             is their concatenation. It can take as an argument any object which
             has a printable representation: symbols, strings, numbers, even
             lists.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="functions-on-symb-and-str">
+            <title>Functions which operate on symbols and strings.</title>
+            <programlisting><![CDATA[
 > (symb 'ar "Madi" #\L #\L 0)
 |ARMadiLL0|]]>
-        </programlisting>
-        <programlisting><![CDATA[
+            </programlisting>
+            <programlisting><![CDATA[
 (defun mkstr (&rest args)
   (with-output-to-string (s)
                          (dolist (a args) (princ a s))))
@@ -1011,13 +1052,12 @@ Entering break-loop.
                  (intern (make-string 1
                                       :initial-element c)))
        (symbol-name sym)))]]>
-        </programlisting>
-        <para>Figure 4.8: Functions which operate on symbols
-        and strings.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX11" id="IDX11"></a> -->
         <para>
-            After calling <code>mkstr</code> to concatenate all its arguments into a
-            single string, <code>symb</code> sends the string to intern. This function is
+            After calling <function>mkstr</function> to concatenate all its arguments into a
+            single string, <function>symb</function> sends the string to intern. This function is
             Lisp's traditional symbol-builder: it takes a string and either
             finds the symbol which prints as the string, or makes a new one
             which does.
@@ -1036,10 +1076,10 @@ Entering break-loop.
 T]]>
         </programlisting>
         <para>
-            The next function, <code>reread</code>, is a generalization of
-            <code>symb</code>. It takes
+            The next function, <function>reread</function>, is a generalization of
+            <function>symb</function>. It takes
             a series of objects, and prints and rereads them. It can return
-            symbols like <code>symb</code>, but it can also return anything else that read
+            symbols like <function>symb</function>, but it can also return anything else that read
             can. Read-macros will be invoked instead of being treated as part
             of a symbol's name, and a:b will be read as the symbol b in package
             a, instead of the symbol |a:b| in the current package.
@@ -1049,11 +1089,12 @@ T]]>
                     Appendix beginning on page 381.
                 </para>
             </footnote>
-            The more general function is also pickier: <code>reread</code>
+            The more general function is also pickier: <function>reread</function>
             will generate an error if its arguments are not proper Lisp syntax.
         </para>
         <para>
-            The last function in Figure 4.8 was predefined in several
+            The last function in <xref linkend="functions-on-symb-and-str"/> was
+            predefined in several
             earlier dialects: explode takes a symbol and returns a list of
             symbols made from the characters in its name.
         </para>
@@ -1085,18 +1126,23 @@ T]]>
             harder to read. One has to understand them all before being able to
             read the program. To see why this kind of statement is mistaken,
             consider the case described on page 41, in which we want to find
-            the nearest bookshops. If you wrote the program using find2,
+            the nearest bookshops. If you wrote the program using
+            <function>find2</function>,
             someone could complain that they had to understand the definition
             of this new utility before they could read your program. Well,
-            suppose you hadn't used find2. Then, instead of having to
-            understand the definition of find2, the reader would have had to
-            understand the definition of find-books, in which the function of
-            find2 is mixed up with the specific task of finding bookshops. It
-            is no more difficult to understand find2 than find-books. And here
+            suppose you hadn't used <function>find2</function>. Then, instead of having to
+            understand the definition of <function>find2</function>,
+            the reader would have had to
+            understand the definition of <function>find-books</function>,
+            in which the function of <function>find2</function>
+            is mixed up with the specific task of finding bookshops. It
+            is no more difficult to understand <function>find2</function> than
+            <function>find-books</function>. And here
             we have only used the new utility once. Utilities are meant to be
             used repeatedly. In a real program, it might be a choice between
-            having to understand find2, and having to understand three or four
-            specialized search routines. Surely the former is easier.
+            having to understand <function>find2</function>, and having to
+            understand three or four specialized search routines.
+            Surely the former is easier.
         </para>
         <para>
             So yes, reading a bottom-up program requires one to understand
