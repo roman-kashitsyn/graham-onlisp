@@ -33,5 +33,7 @@
     <xi:include href="functional-programming.docbook"/>
     <xi:include href="utility-functions.docbook"/>
     <xi:include href="returning-functions.docbook"/>
+    <xi:include href="functions-as-representation.docbook"/>
+    <xi:include href="macros.docbook"/>
 
 </book>
