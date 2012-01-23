@@ -35,5 +35,6 @@
     <xi:include href="returning-functions.docbook"/>
     <xi:include href="functions-as-representation.docbook"/>
     <xi:include href="macros.docbook"/>
+    <xi:include href="when-to-use-macros.docbook"/>
 
 </book>

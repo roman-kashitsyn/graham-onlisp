@@ -146,9 +146,9 @@ LINCOLN]]>
             contents are asked as a question, and depending on the answer, we
             continue traversing at one of two possible destinations. If the
             node is a leaf, run-node just returns its contents. With the
-            network defined in<xref linkend="sample-network"/>, this function
+            network defined in <xref linkend="sample-network"/>, this function
             produces the output
-            shown in<xref linkend="session-of-twenty-questions"/>.
+            shown in <xref linkend="session-of-twenty-questions"/>.
         </para>
         <figure xml:id="function-for-traversing-networks">
             <title>Function for traversing networks.</title>

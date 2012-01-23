@@ -82,7 +82,7 @@ NIL!
         </orderedlist>
         <para>
             The step of building the new expression is called
-            macroexpansion. Lisp looks up the definition of<function>nil!</function>,
+            macroexpansion. Lisp looks up the definition of <function>nil!</function>,
             which shows
             how to construct a replacement for the macro call. The definition
             of nil! is applied like a function to the expressions given as
@@ -99,8 +99,8 @@ NIL!
             in the first place. Evaluation does not always come immediately
             after expansion, as it does at the toplevel. A macro call occurring
             in the definition of a function will be expanded when the function
-            is compiled, but the expansion--or the object code which results
-            from it--won't be evaluated until the function is called.
+            is compiled, but the expansion - or the object code which results
+            from it - won't be evaluated until the function is called.
         </para>
         <para>
             Many of the difficulties you might encounter with macros can be
@@ -130,7 +130,7 @@ NIL!
             in this intermediate form between parser and compiler. If
             necessary, these manipulations can be very extensive. A macro
             generating its expansion has at its disposition the full power of
-            Lisp. Indeed, a macro is really a Lisp function--- one which
+            Lisp. Indeed, a macro is really a Lisp function - one which
             happens to return expressions. The definition of nil! contains a
             single call to list, but another macro might invoke a whole
             subprogram to generate its expansion.
@@ -195,7 +195,7 @@ NIL!
             One comma counteracts the effect of one backquote, so commas
             must match backquotes. Say that a comma is surrounded by a
             particular operator if the operator is prepended to the comma, or
-            prepended to an expression which contains it. In `(,a ,(b `,c))),
+            prepended to an expression which contains it. In `<code>(,a ,(b `,c)))</code>,
             for example, the last comma is surrounded by one comma and two
             backquotes. The general rule is: a comma surrounded by n commas
             must be surrounded by at least n+1 backquotes. An obvious corollary
@@ -204,8 +204,8 @@ NIL!
             above. Any of the following expressions would generate an error if
             typed into the toplevel:
         </para>
-        <programlisting>
-            ,x `(a ,,b c) `(a ,(b ,c) d) `(,,`a)
+        <programlisting><![CDATA[
+,x `(a ,,b c) `(a ,(b ,c) d) `(,,`a)]]>
         </programlisting>
         <para>
             Nested backquotes are only likely to be needed in macro-defining
@@ -224,9 +224,7 @@ NIL!
             quotes. The advantage of backquote is just that it makes
             expressions easier to read, because a backquoted expression
             resembles the expression it will produce. In the previous section
-            we defined
-            <function>nil!</function>
-            as:
+            we defined <function>nil!</function> as:
         </para>
         <programlisting><![CDATA[
 (defmacro nil! (var)
@@ -241,7 +239,8 @@ NIL!
         </programlisting>
         <para>which in this case is not all that different. The longer the
             macro definition, however, the more important it is to use
-            backquote. Figure 7.1 contains two possible definitions of nif, a
+            backquote. <xref linkend="macro-defined-with-and-without-backquote"/>
+            contains two possible definitions of <function>nif</function>, a
             macro which does a three-way numeric if.
             <footnote>
                 <para>
@@ -260,6 +259,8 @@ NIL!
 '(0 2.5 -8))
 (Z P N)]]>
         </programlisting>
+        <figure xml:id="macro-defined-with-and-without-backquote">
+            <title>A macro defined with and without backquote.</title>
         <para>With backquote:</para>
         <programlisting><![CDATA[
 (defmacro nif (expr pos zero neg)
@@ -277,15 +278,14 @@ NIL!
         (list 0 zero)
         (list -1 neg)))]]>
         </programlisting>
-        <para>Figure 7.1: A macro defined with and without
-            backquote.
-        </para>
+        </figure>
         <!--<a name="IDX28" id="IDX28"></a>-->
         <para>
-            The two definitions in Figure 7.1 define the same macro, but the
-            first uses backquote, while the second builds its expansion by
+            The two definitions in <xref linkend="macro-defined-with-and-without-backquote"/>
+            define the same macro, but the first uses backquote, while the second builds
+            its expansion by
             explicit calls to list. From the first definition it's easy to see
-            that (nif x 'p 'z 'n), for example, expands into
+            that <code>(nif x 'p 'z 'n)</code>, for example, expands into
         </para>
         <programlisting><![CDATA[
 (case (truncate (signum x))
@@ -347,9 +347,10 @@ NIL!
             number of arguments and pass them on to functions or macros which
             also take an indeterminate number of arguments. This situation
             commonly arises when implementing implicit blocks. Common Lisp has
-            several operators for grouping code into blocks, including block,
-            tagbody, and progn. These operators rarely appear directly in
-            source code; they are more often implicit--that is, hidden by
+            several operators for grouping code into blocks, including
+            <function>block</function>, <function>tagbody</function>,
+            and <function>progn</function>. These operators rarely appear directly in
+            source code; they are more often implicit - that is, hidden by
             macros.
         </para>
         <para>
@@ -379,9 +380,9 @@ NIL!
         </programlisting>
         <para>
             This definition uses an &amp;body parameter (identical to
-            &amp;rest except for its effect on pretty-printing) to take in an
+            <code>&amp;rest</code> except for its effect on pretty-printing) to take in an
             arbitrary number of arguments, and a comma-at to splice them into a
-            progn expression. In the macroexpansion of the call above, the
+            <function>progn</function> expression. In the macroexpansion of the call above, the
             three expressions in the body will appear within a single
             progn:
         </para>
@@ -397,10 +398,8 @@ NIL!
         </para>
         <para>
             The effect of comma-at can be achieved without using backquote.
-            The expression
-            <code>`(a ,@b c)</code>
-            is equal to
-            <code>(cons 'a (append b (list'c)))</code>,
+            The expression <code>`(a ,@b c)</code>
+            is equal to <code>(cons 'a (append b (list'c)))</code>,
             for example. Comma-at exists only to make such
             expression-generating expressions more readable.
         </para>
@@ -409,7 +408,7 @@ NIL!
             expansions could be built with the function list, backquote
             list-templates make the task much easier. A macro defined with
             defmacroand backquote will superficially resemble a function
-            defined with defun. So long as you are not misled by the
+            defined with <function>defun</function>. So long as you are not misled by the
             similarity, backquote makes macro definitions both easier to write
             and easier to read.
         </para>
@@ -455,16 +454,19 @@ NIL!
             as an inline function, but for the sake of example we will
             reincarnate it as a macro.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="diagram-used-in-writing-memq">
+            <title>Diagram used in writing <function>memq</function>.</title>
+            <programlisting><![CDATA[
 call: (memq x choices)
 expansion: (member x choices :test #'eq)]]>
-        </programlisting>
-        <para>Figure 7.2: Diagram used in writing memq.</para>
+            </programlisting>
+        </figure>
         <!--<a name="IDX29" id="IDX29"></a>-->
         <para>
             The method: Begin with a typical call to the macro you want to
             define. Write it down on a piece of paper, and below it write down
-            the expression into which it ought to expand. Figure 7.2 shows two
+            the expression into which it ought to expand.
+            <xref linkend="diagram-used-in-writing-memq"/> shows two
             such expressions. From the macro call, construct the parameter list
             for your macro, making up some parameter name for each of the
             arguments. In this case there are two arguments, so we'll have two
@@ -476,7 +478,8 @@ expansion: (member x choices :test #'eq)]]>
         <para>
             Now go back to the two expressions you wrote down. For each
             argument in the macro call, draw a line connecting it with the
-            place it appears in the expansion below. In Figure 7.2 there are
+            place it appears in the expansion below.
+            In <xref linkend="diagram-used-in-writing-memq"/> there are
             two parallel lines. To write the body of the macro, turn your
             attention to the expansion. Start the body with a backquote. Now,
             begin reading the expansion expression by expression. Wherever you
@@ -522,7 +525,9 @@ expansion: (member x choices :test #'eq)]]>
 (defmacro memq (obj lst)
   `(member ,obj ,lst :test #'eq))]]>
         </programlisting>
-        <programlisting><![CDATA[
+        <figure xml:id="diagram-used-in-writing-while">
+            <title>Diagram used in writing <function>while</function>.</title>
+            <programlisting><![CDATA[
 (while hungry
   (stare-intently)
   (meow)
@@ -534,13 +539,14 @@ expansion: (member x choices :test #'eq)]]>
   (meow)
   (rub-against-legs))]]>
         </programlisting>
-        <para>Figure 7.3: Diagram used in writing while.</para>
+        </figure>
         <!--<a name="IDX30" id="IDX30"></a>-->
         <para>
             So far, we can only write macros which take a fixed number of
             arguments. Now suppose we want to write a macro while, which will
             take a test expression and some body of code, and loop through the
-            code as long as the test expression returns true. Figure 7.3
+            code as long as the test expression returns true. 
+            <xref linkend="diagram-used-in-writing-while"/>
             contains an example of a while loop describing the behavior of a
             cat.
         </para>
@@ -560,7 +566,8 @@ expansion: (member x choices :test #'eq)]]>
             their position in the expansion. However, when you have a sequence
             of arguments which are going to be sucked into a single &amp;rest
             or &amp;body parameter, treat them as a group, drawing a single
-            line for the whole sequence. Figure 7.3 shows the resulting
+            line for the whole sequence.
+            <xref linkend="diagram-used-in-writing-while"/> shows the resulting
             diagram.
         </para>
         <para>
@@ -588,8 +595,9 @@ expansion: (member x choices :test #'eq)]]>
         </para>
         <para>
             The approach described in this section enables us to write the
-            simplest macros--those which merely shuffle their parameters.
-            Macros can do a lot more than that. Section 7.7 will present
+            simplest macros - those which merely shuffle their parameters.
+            Macros can do a lot more than that. Section
+            <xref linkend="macros-as-programs"/> will present
             examples where expansions can't be represented as simple backquoted
             lists, and to generate them, macros become programs in their own
             right.
@@ -602,7 +610,9 @@ expansion: (member x choices :test #'eq)]]>
             do. When writing more complicated macros, we have to be able to
             check that they are being expanded correctly.
         </para>
-        <para>Figure 7.4 shows a macro definition and two ways of looking at
+        <para>
+            <xref linkend="macro-and-two-depths-of-expansion"/>
+            shows a macro definition and two ways of looking at
             its expansion. The built-in function macroexpand takes an
             expression and returns its macroexpansion. Sending a macro call to
             macroexpand shows how the macro call will finally be expanded
@@ -612,12 +622,14 @@ expansion: (member x choices :test #'eq)]]>
             macroexpansion can sometimes be difficult to read.
         </para>
         <para>
-            From the first expression shown in Figure 7.4, it's hard to tell
+            From the first expression shown in
+            <xref linkend="macro-and-two-depths-of-expansion"/>, it's hard to tell
             whether or not while is expanding as intended, because the built-in
-            do macro gets expanded, as well as the prog macro into which it
+            do macro gets expanded, as well as the <function>prog</function> macro into which it
             expands. What we need is a way of seeing the result after only one
             step of expansion. This is the purpose of the built-in function
-            macroexpand-1, shown in the second example; macroexpand-1 stops
+            <function>macroexpand-1</function>, shown in the second example;
+            <function>macroexpand-1</function> stops
             after just one step, even if the expansion is still a macro
             call.
         </para>
@@ -627,13 +639,16 @@ expansion: (member x choices :test #'eq)]]>
         <programlisting>
             (pprint (macroexpand-1 '(or x y)))
         </programlisting>
-        <para>Figure 7.5 defines a new macro which allows us to say
-            instead.
+        <para>
+            <xref linkend="macro-for-testing-macroexpansion"/> defines a
+            new macro which allows us to say instead.
         </para>
-        <programlisting>
-            (mac (or x y))
-        </programlisting>
         <programlisting><![CDATA[
+(mac (or x y))]]>
+        </programlisting>
+        <figure xml:id="macro-and-two-depths-of-expansion">
+            <title>A macro and two depths of expansion.</title>
+            <programlisting><![CDATA[
 > (defmacro while (test &body body)
     `(do ()
         ((not ,test))
@@ -653,16 +668,16 @@ T
 ((NOT (ABLE)))
 (LAUGH))
 T]]>
-        </programlisting>
-        <para>Figure 7.4: A macro and two depths of
-            expansion.
-        </para>
+            </programlisting>
+        </figure>
         <!--<a name="IDX31" id="IDX31"></a>-->
-        <programlisting><![CDATA[
+        <figure xml:id="macro-for-testing-macroexpansion">
+            <title>A macro for testing macroexpansion.</title>
+            <programlisting><![CDATA[
 (defmacro mac (expr)
   `(pprint (macroexpand-1 ',expr)))]]>
-        </programlisting>
-        <para>Figure 7.5: A macro for testing macroexpansion.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX32" id="IDX32"></a> -->
         <para>
             Typically you debug functions by calling them, and macros by
@@ -675,7 +690,7 @@ T]]>
             you may want to set some variables first. In some systems, you will
             be able to copy the expansion and paste it into the toplevel, or
             select it and choose eval from a menu. In the worst case you can
-            set a variable to the list returned by<function>macroexpand-1</function>,
+            set a variable to the list returned by <function>macroexpand-1</function>,
             then call eval on it:
         </para>
         <programlisting><![CDATA[
@@ -711,7 +726,7 @@ T]]>
             call according to their position: x to 1, y to 2, and z to 3.
             Destructuring describes the situation where this sort of positional
             assignment is done for arbitrary list structures, as well as flat
-            lists like<code>(x y z)</code>.
+            lists like <code>(x y z)</code>.
         </para>
         <para>
             The Common Lisp
@@ -745,7 +760,7 @@ T]]>
             bindings, rather than do assignments. However, conceptually
             destructuring is a way of assigning values, and would work just as
             well for existing variables as for new ones. That is, there is
-            nothing to stop you from writing a destructuring<function>setq</function>.
+            nothing to stop you from writing a destructuring <function>setq</function>.
         </para>
         <programlisting><![CDATA[
 (dolist (x '(a b c))
@@ -780,11 +795,11 @@ T]]>
             some variable to the value returned by the test expression. This
             macro may be best implemented with a nested parameter list:
         </para>
-        <programlisting>
-            (defmacro when-bind ((var expr) &amp;body body)
-            `(let ((,var ,expr))
-            (when ,var
-            ,@body)))
+        <programlisting><![CDATA[
+(defmacro when-bind ((var expr) &amp;body body)
+  `(let ((,var ,expr))
+     (when ,var
+       ,@body)))]]>
         </programlisting>
         <para>and called as follows:</para>
         <programlisting><![CDATA[
@@ -802,7 +817,9 @@ T]]>
             and dolist, which take two or more arguments followed by a body of
             expressions.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="sketch-of-defmacro">
+            <title>A sketch of defmacro.</title>
+            <programlisting><![CDATA[
 (defmacro our-expander (name) `(get ,name 'expander))
 
 (defmacro our-defmacro (name parms &amp;body body)
@@ -819,8 +836,8 @@ T]]>
   (if (and (consp expr) (our-expander (car expr)))
       (funcall (our-expander (car expr)) expr)
     expr))]]>
-        </programlisting>
-        <para>Figure 7.6: A sketch of defmacro.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX33" id="IDX33"></a> -->
     </section>
     <section xml:id="model-of-macros" xreflabel="A Model of Macros">
@@ -834,26 +851,32 @@ T]]>
         <para>
             There is a long tradition of such explanations in Lisp. The Lisp
             1.5 Programmer's Manual, first published in 1962, gives for
-            reference a definition of eval written in Lisp. Since defmacro is
-            itself a macro, we can give it the same treatment, as in Figure
-            7.6. This definition uses several techniques which haven't been
+            reference a definition of eval written in Lisp.
+            Since <function>defmacro</function> is
+            itself a macro, we can give it the same treatment, as in
+            <xref linkend="sketch-of-defmacro"/> .
+            This definition uses several techniques which haven't been
             covered yet, so some readers may want to refer to it later.
         </para>
         <para>
-            The definition in Figure 7.6 gives a fairly accurate impression
+            The definition in <xref linkend="sketch-of-defmacro"/>
+            gives a fairly accurate impression
             of what macros do, but like any sketch it is incomplete. It
-            wouldn't handle the &amp;whole keyword properly. And what defmacro
+            wouldn't handle the &amp;whole keyword properly. And what
+            <function>defmacro</function>
             really stores as the macro-function of its first argument is a
             function of two arguments: the macro call, and the lexical
             environment in which it occurs. However, these features are used
             only by the most esoteric macros. If you worked on the assumption
-            that macros were implemented as in Figure 7.6, you would hardly
+            that macros were implemented as in <xref linkend="sketch-of-defmacro"/>,
+            you would hardly
             ever go wrong. Every macro defined in this book would work, for
-            example. The definition in Figure 7.6 yields an expansion function
+            example. The definition in <xref linkend="sketch-of-defmacro"/>
+            yields an expansion function
             which is a sharp-quoted lambda-expression. That should make it a
             closure: any free symbols in the macro definition should refer to
-            variables in the environment where the defmacro occurred. So it
-            should be possible to say this:
+            variables in the environment where the <function>defmacro</function>
+            occurred. So it should be possible to say this:
         </para>
         <programlisting><![CDATA[
 (let ((op 'setq))
@@ -885,7 +908,8 @@ T]]>
             code.
         </para>
         <para>
-            Section 7.3 gave an easy way of writing macros. Using this
+            Section <xref linkend="defining-simple-macros"/>
+            gave an easy way of writing macros. Using this
             technique we can write macros whose expansions contain the same
             subexpressions as appear in the macro call. Unfortunately, only the
             simplest macros meet this condition. As a more complicated example,
@@ -912,7 +936,9 @@ T]]>
   (princ y))]]>
         </programlisting>
         <para>should expand into something like</para>
-        <programlisting><![CDATA[
+        <figure xml:id="desired-expansion-of-do">
+            <title>Desired expansion of do.</title>
+            <programlisting><![CDATA[
 (prog ((w 3) (x 1) (y 2) (z nil))
       foo
       (if (> x 10)
@@ -921,21 +947,23 @@ T]]>
       (princ y)
       (psetq x (1+ x) y (1+ y))
       (go foo))]]>
-        </programlisting>
-        <para>Figure 7.7: Desired expansion of do.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX34" id="IDX34"></a> -->
         <para>
-            Figure 7.7 shows an instance of do, and the expression into
+            <xref linkend="desired-expansion-of-do"/>
+            shows an instance of do, and the expression into
             which it should expand. Doing expansions by hand is a good way to
             clarify your ideas about how a macro should work. For example, it
             may not be obvious until one tries writing the expansion that the
-            local variables will have to be updated using<function>psetq</function>.
+            local variables will have to be updated using <function>psetq</function>.
         </para>
         <para>
             The built-in macro
             <function>psetq</function>
             (named for "parallel setq") behaves
-            like<function>setq</function>, except that all its (even-numbered) arguments will be
+            like <function>setq</function>, except that all its (even-numbered)
+            arguments will be
             evaluated before any of the assignments are made. If an ordinary
             <function>setq</function>
             has more than two arguments,
@@ -962,26 +990,24 @@ T]]>
         </programlisting>
         <para>
             So here b gets the old value of a. The
-            <function>psetq</function>
-            macro is provided
+            <function>psetq</function> macro is provided
             especially to support macros like
-            <function>do</function>
-            , which need to evaluate some
-            of their arguments in parallel. (Had we used<function>setq</function>,
-            we would have been defining
-            <function>do*</function>
-            instead.)
+            <function>do</function>, which need to evaluate some
+            of their arguments in parallel. (Had we used <function>setq</function>,
+            we would have been defining <function>do*</function> instead.)
         </para>
         <para>
             On looking at the expansion, it is also clear that we can't
             really use foo as the loop label. What if foo is also used as a
-            loop label within the body of the<function>do</function>?
+            loop label within the body of the <function>do</function>?
             Chapter 9 will deal with this
             problem in detail; for now, suffice it to say that instead of using
             foo, the macroexpansion must use a special anonymous symbol
-            returned by the function<function>gensym</function>.
+            returned by the function <function>gensym</function>.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="implementing-do">
+            <title>Implementing <function>do</function>.</title>
+            <programlisting><![CDATA[
 (defmacro our-do (bindforms (test &rest result) &body body)
   (let ((label (gensym)))
     `(prog ,(make-initforms bindforms)
@@ -1005,25 +1031,28 @@ T]]>
                   (list (car b) (third b))
                 nil))
           bindforms))]]>
-        </programlisting>
-        <para>Figure 7.8: Implementing do.</para>
+        </programlisting></figure>
         <!-- <a name="IDX35" id="IDX35"></a> -->
         <para>
-            In order to write<function>do</function>, we consider what it would take to
-            transform the first expression in Figure 7.7 into the second. To
+            In order to write <function>do</function>, we consider what it would take to
+            transform the first expression in <xref linkend="desired-expansion-of-do"/>
+            into the second. To
             perform such a transformation, we need to do more than get the
             macro parameters into the right positions in some backquoted list.
             The initial prog has to be followed by a list of symbols and their
             initial bindings, which must be extracted from the second argument
-            passed to the do. The function make-initforms in Figure 7.8 will
+            passed to the do. The function <function>make-initforms</function> in
+            <xref linkend="implementing-do"/> will
             return such a list. We also have to build a list of arguments for
             the psetq, but this case is more complicated because not all the
-            symbols should be updated. In Figure 7.8, make-stepforms returns
-            arguments for the psetq. With these two functions, the rest of the
-            definition becomes fairly straightforward.
+            symbols should be updated. In <xref linkend="implementing-do"/>,
+            <function>make-stepforms</function> returns
+            arguments for the <function>psetq</function>.
+            With these two functions, the rest of the definition becomes fairly straightforward.
         </para>
         <para>
-            The code in Figure 7.8 isn't exactly the way do would be written
+            The code in <xref linkend="implementing-do"/> isn't exactly the way
+            do would be written
             in a real implementation. To emphasize the computation done during
             expansion,
             <function>make-initforms</function>
@@ -1082,12 +1111,13 @@ T]]>
             as a macro. Since
             <code>(and a b c)</code>
             is equivalent to <code>(if a (if b c))</code>, we
-            can write and in terms of if as in the first definition in Figure
-            7.9. According to the standards by which we judge ordinary code,
+            can write and in terms of if as in the first definition in
+            <xref linkend="two-macors-equivalent-to-and"/>.
+            According to the standards by which we judge ordinary code,
             our-and is badly written. The expander code is recursive, and on
             each recursion finds the length of successive cdrs of the same
             list. If this code were going to be evaluated at runtime, it would
-            be better to define this macro as in<code>our-andb</code>,
+            be better to define this macro as in <code>our-andb</code>,
             which generates the
             same expansion with no wasted effort. However, as a macro
             definition our-and is just as good, if not better. It may be
@@ -1095,7 +1125,9 @@ T]]>
             organization shows more clearly the way in which the expansion
             depends on the number of conjuncts.
         </para>
-        <programlisting><![CDATA[
+        <figure xml:id="two-macors-equivalent-to-and">
+            <title>Two macros equivalent to and.</title>
+            <programlisting><![CDATA[
 (defmacro our-and (&rest args)
   (case (length args)
     (0 t)
@@ -1112,8 +1144,8 @@ T]]>
                                 ,(expander (cdr rest)))
                          (car rest))))
       (expander args))))]]>
-        </programlisting>
-        <para>Figure 7.9: Two macros equivalent to and.</para>
+            </programlisting>
+        </figure>
         <!-- <a name="IDX36" id="IDX36"></a> -->
         <para>
             As always, there are exceptions. In Lisp, the distinction
@@ -1125,7 +1157,7 @@ T]]>
             expansion its output. Of course under such circumstances expander
             code should be written with efficiency in mind. However, it's safe
             to say that most expander code (a) only affects the speed of
-            compilation, and (b) doesn't affect it very much--meaning that
+            compilation, and (b) doesn't affect it very much - meaning that
             clarity should nearly always come first.
         </para>
         <para>
@@ -1138,7 +1170,7 @@ T]]>
         <para>
             Proponents of structured programming disliked goto for what it
             did to source code. It was not machine language jump instructions
-            that they considered harmful--so long as they were hidden by more
+            that they considered harmful - so long as they were hidden by more
             abstract constructs in source code. Gotos are condemned in Lisp
             precisely because it's so easy to hide them: you can use do
             instead, and if you didn't have do, you could write it. Of course,
@@ -1159,7 +1191,7 @@ T]]>
             on variables
             created within the macroexpansion.
             If you look at expansions of some of the built-in macros, you'll
-            see quite a lot of<function>setq</function>s.
+            see quite a lot of <function>setq</function>s.
         </para>
         <para>
             Several circumstances can make clarity more important in
@@ -1239,7 +1271,7 @@ MAC
             <listitem>
                 <para>
                     When a macro is redefined, also recompile all the functions (or
-                    macros) which call it--directly or via other macros.
+                    macros) which call it - directly or via other macros.
                 </para>
             </listitem>
         </orderedlist>
@@ -1270,7 +1302,7 @@ MAC
         <para>
             There are some legitimate reasons to consider how to translate
             functions into macros, though. When you begin writing macros, it
-            sometimes helps to think as if you were writing a function--an
+            sometimes helps to think as if you were writing a function - an
             approach that usually yields macros which aren't quite right, but
             which at least give you something to work from. Another reason to
             look at the relationship between macros and functions is to see how
@@ -1380,8 +1412,8 @@ MAC
   `(+ ,@args))]]>
         </programlisting>
         <para>
-            When condition 3 doesn't hold--when new variables are created
-            within the function body--the rule about the insertion of commas
+            When condition 3 doesn't hold - when new variables are created
+            within the function body - the rule about the insertion of commas
             must be modified. Instead of putting commas before all symbols in
             the parameter list, we only put them before those which will refer
             to the parameters. For example, in:

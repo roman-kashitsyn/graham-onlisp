@@ -67,8 +67,8 @@
             use the -if-not functions.
             <footnote>
                 <para>
-                    Except perhaps<function>remove-if-not</function>, which is used
-                    more often than<function>remove-if</function>.
+                    Except perhaps <function>remove-if-not</function>, which is used
+                    more often than <function>remove-if</function>.
                 </para>
             </footnote>
             Indeed, CLTL2 (p. 391) says that their
@@ -175,9 +175,9 @@
             makes a language more orthogonal. Before complement, Common Lisp
             had pairs of functions like
             <function>remove-if</function>
-            and<function>remove-if-not</function>,
+            and <function>remove-if-not</function>,
             <function>subst-if</function>
-            and<function>subst-if-not</function>, and so on. With complement
+            and <function>subst-if-not</function>, and so on. With complement
             we can do without half of them.
         </para>
         <para>The
@@ -214,20 +214,14 @@
             toward this goal? There is at least one other way in which
             functions are grouped in pairs. Many functions also come in a
             destructive version:
-            <function>remove-if</function>
-            and
-            <function>delete-if</function>
-            ,
-            <function>reverse</function>
-            and
-            <function>nreverse</function>
-            ,
-            <function>append</function>
-            and
-            <function>nconc</function>
-            . By defining an operator to return the destructive
-            counterpart of a function, we would not have to refer to the
-            destructive functions directly.
+            <function>remove-if</function> and
+            <function>delete-if</function>,
+            <function>reverse</function> and
+            <function>nreverse</function>,
+            <function>append</function> and
+            <function>nconc</function>. By defining an operator to
+            return the destructive counterpart of a function,
+            we would not have to refer to the destructive functions directly.
         </para>
         <para>
             <xref linkend="destructive-equivalents"/>
@@ -576,7 +570,8 @@ Elapsed Time = 0.00 seconds
         <para>To find the length of the list, we don't need to look at the
             elements, or stop part- way, so the object x is always ignored, and
             the function f always called. However, we need to take advantage of
-            both possibilities to express our-every, for e.g. oddp:
+            both possibilities to express <function>our-every</function>, for e.g.
+            <function>oddp</function>:
             <footnote>
                 <para>
                     In one widely used Common Lisp,
@@ -586,7 +581,7 @@ Elapsed Time = 0.00 seconds
                     and
                     <constant>nil</constant>.
                     In that implementation it won't work to give either as the
-                    second argument to<function>lrec</function>.
+                    second argument to <function>lrec</function>.
                 </para>
             </footnote>
         </para>
@@ -599,14 +594,14 @@ Elapsed Time = 0.00 seconds
             uses labels to build a local recursive
             function called self. In the recursive case the function rec is
             passed two arguments, the current car of the list, and a function
-            embodying the recursive call. In functions like<function>our-every</function>,
+            embodying the recursive call. In functions like <function>our-every</function>,
             where the recursive case is an and, if the first argument returns false
             we want to stop right there. Which means that the argument passed
             in the recursive case must not be a value but a function, which we
             can call (if we want) in order to get a value.
         </para>
         <figure xml:id="functions-expressed-with-lrec">
-            <title>Functions expressed with<function>lrec</function>.
+            <title>Functions expressed with <function>lrec</function>.
             </title>
             <programlisting><![CDATA[
 ; copy-list
@@ -626,7 +621,7 @@ Elapsed Time = 0.00 seconds
         <para>
             <xref linkend="functions-expressed-with-lrec"/>
             shows some existing
-            Common Lisp functions defined with<function>lrec</function>.
+            Common Lisp functions defined with <function>lrec</function>.
             <footnote>
                 <para>
                     In some implementations, you may have to set
@@ -687,7 +682,7 @@ Elapsed Time = 0.00 seconds
             Any list can be interpreted as a binary tree. Hence the
             distinction between pairs of Common Lisp functions like
             <function>copy-list</function>
-            and<function>copy-tree</function>.
+            and <function>copy-tree</function>.
             The former copies a list as a sequence - if the list
             contains sublists, the sublists, being mere elements in the
             sequence, are not copied:
@@ -771,7 +766,7 @@ NIL]]>
            (if (cdr tree) (flatten (cdr tree))))))]]>
         </programlisting>
         <para>
-            Finally, consider<function>rfind-if</function>, a recursive
+            Finally, consider <function>rfind-if</function>, a recursive
             version of
             <function>find-if</function>
             which
@@ -838,7 +833,7 @@ NIL]]>
             A definition of
             <function>ttrav</function>
             ("tree traverser")
-            is shown in<xref linkend="ttrav"/>.
+            is shown in <xref linkend="ttrav"/>.
             Instead of passing one value in the recursive case, we pass two,
             one for the left subtree and one for the right. If the base
             argument is a function it will be called on the current leaf. In
@@ -850,12 +845,10 @@ NIL]]>
             With
             <function>ttrav</function>
             we could express all the
-            preceding functions except<function>rfind-if</function>.
+            preceding functions except <function>rfind-if</function>.
             (They are shown in
-            <xref linkend="functions-expressed-with-ttrav"/>
-            .)
-            To define
-            <function>rfind-if</function>
+            <xref linkend="functions-expressed-with-ttrav"/>.)
+            To define <function>rfind-if</function>
             we need a more general tree recursion builder which gives us control
             over when, and if, the recursive calls are made. As the first
             argument to
@@ -906,13 +899,13 @@ NIL]]>
             always traverse
             a whole tree. That's fine for functions like
             <function>count-leaves</function>
-            or<function>flatten</function>,
+            or <function>flatten</function>,
             which have to traverse the whole tree anyway.
             But we want
             <function>rfind-if</function>
             to stop searching as soon
             as it finds what it's looking for. It must be
-            built by the more general<function>trec</function>, shown in
+            built by the more general <function>trec</function>, shown in
             <xref linkend="trec"/>
             . The second arg to
             <function>trec</function>

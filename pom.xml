@@ -45,6 +45,8 @@
           <paperType>A4</paperType>
           <fop1Extensions>1</fop1Extensions>
           <foCustomization>src/main/resources/stylesheets/fo/docbook.xsl</foCustomization>
+          <htmlStylesheet>${project.baseUri}/src/main/css/book.css</htmlStylesheet>
+          <cssDecoration>true</cssDecoration>
         </configuration>
         <dependencies>
           <dependency>
