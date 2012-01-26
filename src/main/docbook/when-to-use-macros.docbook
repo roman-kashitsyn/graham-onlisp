@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <chapter version="5.0"
          xml:lang="en"
-         xml:id="functions-as-representation"
-         xreflabel="Functions as Representation"
+         xml:id="when-to-use-macros"
+         xreflabel="When to Use Macros"
          xmlns="http://docbook.org/ns/docbook"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xmlns:xml="http://www.w3.org/XML/1998/namespace"

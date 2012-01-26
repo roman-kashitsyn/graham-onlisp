@@ -45,9 +45,6 @@ pre {
     padding:12px;
     background:#FAFAFA;
     border:1px solid #DDD;
-}
-
-pre {
     -webkit-border-radius:4px;
     -moz-border-radius:4px;
     border-radius:4px;
@@ -57,17 +54,12 @@ pre {
     font-weight:bold;
 }
 
-#figures {
-    font-size:0.8em;
-}
-
 #figures tr>td {
     padding-left:24px;
 }
 
 div.figure {
     text-align:center;
-    font-size:0.8em;
 }
 
 .letter {
