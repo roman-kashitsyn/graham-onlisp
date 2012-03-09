@@ -406,10 +406,11 @@ OUR+
         <para>
             A function which is neither recursive, nor part of some mutually
             recursive set of functions, can be transformed into a macro by the
-            simple technique described in Section 7.10. However, just inserting
-            backquotes and commas won't work with a recursive function. Let's
-            take the built-in nth as an example. (For simplicity, our versions
-            of nth will do no error-checking.)
+            simple technique described in <xref linkend="macros-from-functions"/>.
+            However, just inserting backquotes and commas won't work with a
+            recursive function. Let's take the built-in <function>nth</function>
+            as an example. (For simplicity, our versions
+            of <function>nth</function> will do no error-checking.)
             <xref linkend="mistaken-analogy-to-a-recursive-function"/>
             shows a mistaken
             attempt to define nth as a macro. Superficially,
@@ -537,12 +538,10 @@ OUR+
             The built-in
             <function>labels</function>
             special
-            form (Section 2.7) creates a local function
-            definition. While each expansion of
-            <function>nthc</function>
-            will call the globally
-            defined function nth-fn, each expansion of
-            <function>nthe</function>
+            form (<xref linkend="local-functions"/>) creates a local function
+            definition. While each expansion of <function>nthc</function>
+            will call the globally defined function <function>nth-fn</function>,
+            each expansion of <function>nthe</function>
             will have its own version of such a function within it.
         </para>
         <para>

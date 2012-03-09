@@ -1,0 +1,935 @@
+<?xml version="1.0" encoding="utf-8"?>
+<chapter version="5.0"
+         xml:lang="en"
+         xml:id="generalized-variables"
+         xreflabel="Generalized Variables"
+         xmlns="http://docbook.org/ns/docbook"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:xml="http://www.w3.org/XML/1998/namespace"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         xsi:schemaLocation="http://docbook.org/ns/docbook
+                             http://www.docbook.org/xml/5.0/xsd/docbook.xsd
+                             http://www.w3.org/1999/xlink
+                             http://www.docbook.org/xml/5.0/xsd/xlink.xsd
+                             http://www.w3.org/XML/1998/namespace
+                             http://www.docbook.org/xml/5.0/xsd/xml.xsd">
+    <title>Generalized Variables</title>
+    <para>
+        <xref linkend="when-to-use-macros"/> mentioned that one of the
+        advantages of macros is their ability to transform their arguments.
+        One macro of this sort is <function>setf</function>.
+        This chapter looks at the implications of <function>setf</function>, and then
+        shows some examples of macros which can be built upon it.
+    </para>
+    <para>
+        Writing correct macros on <function>setf</function> is surprisingly difficult. To
+        introduce the topic, the first section will provide a simple
+        example which is slightly incorrect. The next section will explain
+        what's wrong with this macro, and show how to fix it. The third and
+        fourth sections present examples of utilities built on <function>setf</function>, and
+        the final section explains how to define your own <function>setf</function>
+        inversions.
+    </para>
+    <section xml:id="the-concept" xreflabel="The Concept">
+        <title>The Concept</title>
+        <para>
+            The built-in macro <function>setf</function> is a generalization
+            of <function>setq</function>. The first argument to <function>setf</function>
+            can be a call instead of just a variable:
+        </para>
+        <programlisting><![CDATA[
+> (setq lst '(a b c))
+(A B C)
+> (setf (car lst) 480)
+480
+> lst
+(480 B C)]]>
+        </programlisting>
+        <para>
+            In general <code>(setf x y)</code> can be understood as saying "see to it
+            that x evaluates to y." As a macro, <function>setf</function> can look inside its
+            arguments to see what needs to be done to make such a statement
+            true. If the first argument (after macroexpansion) is a symbol, the
+            <function>setf</function> just expands into a <function>setq</function>.
+            But if the first argument is a query, the <function>setf</function>
+            expands into the corresponding assertion. Since the second argument is a
+            constant, the preceding example could expand into:
+        </para>
+        <programlisting><![CDATA[
+(progn (rplaca lst 480) 480)
+]]></programlisting>
+        <para>
+            This transformation from query to assertion is called inversion.
+            All the most frequently used Common Lisp access functions have
+            predefined inversions, including <function>car</function>,
+            <function>cdr</function>, <function>nth</function>,
+            <function>aref</function>, <function>get</function>,
+            <function>gethash</function>, and the access functions created by
+            <function>defstruct</function>. (The full list is in CLTL2, p. 125.)
+        </para>
+        <para>
+            An expression which can serve as the first argument to <function>setf</function> is
+            called a generalized variable. Generalized variables have turned
+            out to be a powerful abstraction. A macro call resembles a
+            generalized variable in that any macro call which expands into an
+            invertible reference will itself be invertible.
+        </para>
+        <para>
+            When we also write our own macros on top of <function>setf</function>, the
+            combination leads to noticeably cleaner programs. One of the macros
+            we can define on top of <function>setf</function> is toggle,<footnote>
+                <para>
+                    This definition is not correct, as the following section will explain.
+                </para>
+            </footnote>
+        </para>
+        <programlisting><![CDATA[
+(defmacro toggle (obj)                     ; wrong
+  `(setf ,obj (not ,obj)))]]>
+        </programlisting>
+        <para>which toggles the value of a generalized variable:</para>
+        <programlisting><![CDATA[
+> (let ((lst '(a b c)))
+(toggle (car lst))
+lst)
+(NIL B C)]]>
+        </programlisting>
+        <para>
+            Now consider the following sample application. Suppose
+            someone - a soap-opera writer, energetic busybody, or party
+            official - wants to maintain a database of all the relations between
+            the inhabitants of a small town. Among the tables required is one
+            which records people's friends:
+        </para>
+        <programlisting><![CDATA[
+(defvar *friends* (make-hash-table))]]>
+        </programlisting>
+        <para>
+            The entries in this hash-table are themselves hash-tables, in
+            which names of potential friends are mapped to <constant>t</constant>
+            or <constant>nil</constant>:
+        </para>
+        <programlisting><![CDATA[
+(setf (gethash 'mary *friends*) (make-hash-table))]]>
+        </programlisting>
+        <para>
+            To make John the friend of Mary, we would say:
+        </para>
+        <programlisting><![CDATA[
+(setf (gethash 'john (gethash 'mary *friends*)) t)]]>
+        </programlisting>
+        <para>
+            The town is divided between two factions. As factions are wont
+            to do, each says "anyone who is not with us is against us," so
+            everyone in town has been compelled to join one side or the other.
+            Thus when someone switches sides, all his friends become enemies
+            and all his enemies become friends.
+        </para>
+        <para>
+            To toggle whether x is the friend of y using only built-in
+            operators, we have to say:
+        </para>
+        <programlisting><![CDATA[
+(setf (gethash x (gethash y *friends*))
+      (not (gethash x (gethash y *friends*))))]]>
+        </programlisting>
+        <para>which is a rather complicated expression, though much simpler
+            than it would have been without <function>setf</function>.
+            If we had defined an access macro upon the database as follows:
+        </para>
+        <programlisting><![CDATA[
+(defmacro friend-of (p q)
+  `(gethash ,p (gethash ,q *friends*)))]]>
+        </programlisting>
+        <para>then between this macro and toggle, we would have been better
+            equipped to deal with changes to the database. The previous update
+            could have been expressed as simply:
+        </para>
+        <programlisting><![CDATA[
+(toggle (friend-of x y))]]>
+        </programlisting>
+        <para>
+            Generalized variables are like a health food that tastes good.
+            They yield programs which are virtuously modular, and yet
+            beautifully elegant. If you provide access to your data structures
+            through macros or invertible functions, other modules can use <function>setf</function>
+            to modify your data structures without having to know the details
+            of their representation.
+        </para>
+    </section>
+    <section xml:id="the-multiple-evaluation-problem"
+             xreflabel="The Multiple Evaluation Problem">
+        <title>The Multiple Evaluation Problem</title>
+        <para>
+            The previous section warned that our initial definition of
+            <function>toggle</function> was incorrect:
+        </para>
+        <programlisting><![CDATA[
+(defmacro toggle (obj)                     ; wrong
+  `(setf ,obj (not ,obj)))]]>
+        </programlisting>
+        <para>
+            It is subject to the problem described in <xref linkend="number-of-evaluations"/>,
+            multiple evaluation. Trouble arises when its argument has side-effects. For
+            example, if lst is a list of objects, and we write:
+        </para>
+        <programlisting><![CDATA[
+(toggle (nth (incf i) lst))]]>
+        </programlisting>
+        <para>then we would expect to be toggling the (i+1)th element.
+            However, with the current definition of toggle this call will
+            expand into:
+        </para>
+        <programlisting><![CDATA[
+(setf (nth (incf i) lst)
+      (not (nth (incf i) lst)))]]>
+        </programlisting>
+        <para>
+            This increments i twice, and sets the (i+1)th element to the
+            opposite of the (i+2)th element. So in this example
+        </para>
+        <programlisting><![CDATA[
+> (let ((lst '(t nil t))
+(i -1))
+(toggle (nth (incf i) lst))
+lst)
+(T NIL T)]]>
+        </programlisting>
+        <para>the call to toggle seems to have no effect.</para>
+        <para>
+            It is not enough just to take the expression given as an
+            argument to toggle and insert it as the first argument to
+            <function>setf</function>.
+            We have to look inside the expression to see what it does: if it
+            contains subforms, we have to break them apart and evaluate them
+            separately, in case they have side effects. In general, this is a
+            complicated business.
+        </para>
+        <para>
+            To make it easier, Common Lisp provides a macro which
+            automatically defines a limited class of macros on <function>setf</function>.
+            This macro is called <function>define-modify-macro</function>,
+            and it takes three arguments: the name of the macro, its additional
+            parameters (after the generalized variable), and the name of the function<footnote>
+                <para>
+                    A function name in the general sense: either
+                    <function>1+</function> or <code>(lambda (x) (+ x 1))</code>.
+                </para>
+            </footnote>
+            which yields the new value for the generalized variable.
+        </para>
+        <para>
+            Using<function>define-modify-macro</function>, we could
+            define <function>toggle</function> as follows:
+        </para>
+        <programlisting><![CDATA[
+(define-modify-macro toggle () not)]]>
+        </programlisting>
+        <para>
+            Paraphrased, this says "to evaluate an expression of the form
+            <code>(toggle place)</code>, find the location specified by place, and if the
+            value stored there is val, replace it with the value of <code>(not val)</code>."
+            Here is the new macro used in the same example:
+        </para>
+        <programlisting><![CDATA[
+> (let ((lst '(t nil t))
+(i -1))
+(toggle (nth (incf i) lst))
+lst)
+(NIL NIL T)
+]]></programlisting>
+        <para>
+            This version gives the correct result, but it could be made more
+            general. Since <function>setf</function> and <function>setq</function>
+            can take an arbitrary number of arguments, so should <function>toggle</function>.
+            We can add this capability by defining
+            another macro on top of the modify-macro, as in
+            <xref linkend="macros-which-operate-on-generalized-variables"/>.
+        </para>
+        <figure xml:id="macros-which-operate-on-generalized-variables">
+            <title>Macros which operate on generalized variables.</title>
+            <programlisting><![CDATA[
+(defmacro allf (val &rest args)
+  (with-gensyms (gval)
+                `(let ((,gval ,val))
+                   (setf ,@(mapcan #'(lambda (a) (list a gval))
+                                    args)))))
+
+(defmacro nilf (&rest args) `(allf nil ,@args))
+
+(defmacro tf (&rest args) `(allf t ,@args))
+
+(defmacro toggle (&rest args)
+  `(progn
+     ,@(mapcar #'(lambda (a) `(toggle2 ,a))
+                args)))
+
+(define-modify-macro toggle2 () not)]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX60" id="IDX60"></a> -->
+    </section>
+    <section xml:id="new-utilities" xreflabel="New Utilities">
+        <title>New Utilities</title>
+        <para>
+            This section gives some examples of new utilities which operate
+            on generalized variables. They must be macros in order to pass
+            their arguments intact to <function>setf</function>.
+        </para>
+        <para>
+            <xref linkend="macros-which-operate-on-generalized-variables"/>
+            shows four new macros built upon <function>setf</function>. The first,
+            <function>allf</function>, is for setting a number of generalized variables to the same
+            value. Upon it are built <function>nilf</function> and
+            <function>tf</function>, which set their arguments to <constant>nil</constant>
+            and <constant>t</constant>, respectively. These macros are simple, but they make a
+            difference.
+        </para>
+        <para>
+            Like <function>setq</function>, <function>setf</function>
+            can take multiple arguments - alternating variables and values:
+        </para>
+        <programlisting><![CDATA[
+(setf x 1 y 2)]]>
+        </programlisting>
+        <para>
+            So can these new utilities, but you can skip giving half the
+            arguments. If you want to initialize a number of variables to
+            <constant>nil</constant>, instead of
+        </para>
+        <programlisting><![CDATA[
+(setf x nil y nil z nil)]]>
+        </programlisting>
+        <para>you can say just</para>
+        <programlisting><![CDATA[
+(nilf x y z)]]>
+        </programlisting>
+        <figure xml:id="list-operations-on-generalized-variables">
+            <title>List operations on generalized variables.</title>
+            <programlisting><![CDATA[
+(define-modify-macro concf (obj) nconc)
+
+(define-modify-macro conc1f (obj)
+  (lambda (place obj)
+    (nconc place (list obj))))
+
+(define-modify-macro concnew (obj &amp;rest args)
+  (lambda (place obj &amp;rest args)
+    (unless (apply #'member obj place args)
+      (nconc place (list obj)))))]]>
+        </programlisting></figure>
+        <!-- <a name="IDX61" id="IDX61"></a> -->
+        <para>
+            The last macro, <function>toggle</function>, was described in the previous section:
+            it is like <function>nilf</function>, but gives each of its arguments
+            the opposite truth value.
+        </para>
+        <para>
+            These four macros illustrate an important point about operators
+            for assignment. Even if we only intend to use an operator on
+            ordinary variables, it's worth writing it to expand into a <function>setf</function>
+            instead of a <function>setq</function>. If the first argument is a symbol,
+            the <function>setf</function> will expand into a <function>setq</function>
+            anyway. Since we can have the generality of <function>setf</function>
+            at no extra cost, it is rarely desirable to use <function>setq</function> in a
+            macroexpansion.
+        </para>
+        <para>
+            <xref linkend="list-operations-on-generalized-variables"/>
+            contains three macros for destructively modifying
+            the ends of lists. <xref linkend="functional-design"/> mentioned
+            that it is unsafe to rely on
+        </para>
+        <programlisting><![CDATA[
+(nconc x y)]]>
+        </programlisting>
+        <para>for side-effects, and that one must write instead</para>
+        <programlisting><![CDATA[
+(setq x (nconc x y))]]>
+        </programlisting>
+        <para>
+            This idiom is embodied in <function>concf</function>.
+            The more specialized <function>conc1f</function> and
+            <function>concnew</function> are like push and <function>pushnew</function>
+            for the other end of the list:
+            <function>conc1f</function> adds one element to the end of a list,
+            and <function>concnew</function> does the
+            same, but only if the element is not already a member.
+        </para>
+        <para>
+            <xref linkend="defining-functions"/> mentioned that the name of a function can be a
+            lambda-expression as well as a symbol. Thus it is fine to give a
+            whole lambda-expression as the third argument to
+            define-modify-macro, as in the definition of <function>conc1f</function>.
+            Using <function>conc1</function> from page 45, this macro could also
+            have been written:
+        </para>
+        <programlisting><![CDATA[
+(define-modify-macro conc1f (obj) conc1)]]>
+        </programlisting>
+        <para>
+            The macros in <xref linkend="list-operations-on-generalized-variables"/>
+            should be used with one reservation.
+            If you're planning to build a list by adding elements to the end,
+            it may be preferable to use push, and then <function>nreverse</function>
+            the list. It is cheaper to do something to the front of a list than to the end,
+            because to do something to the end you have to get there first. It
+            is probably to encourage efficient programming that Common Lisp has
+            many operators for the former and few for the latter.
+        </para>
+    </section>
+    <section xml:id="more-complex-utilities" xreflabel="More Complex Utilities">
+        <title>More Complex Utilities</title>
+        <para>
+            Not all macros on <function>setf</function> can be defined with
+            <function>define-modify-macro</function>.
+            Suppose, for example, that we want to define a macro <function>_f</function>
+            for applying a function destructively to a generalized variable. The built-in
+            macro <function>incf</function> is an abbreviation for
+            <function>setf</function> of <function>+</function>. Instead of
+        </para>
+        <programlisting><![CDATA[
+(setf x (+ x y))]]>
+        </programlisting>
+        <para>we say just</para>
+        <programlisting><![CDATA[
+(incf x y)]]>
+        </programlisting>
+        <para>
+            The new <function>_f</function> is to be a generalization of
+            this idea: while <function>incf</function> expands into a
+            call to <function>+</function>, <function>_f</function> will
+            expand into a call to the operator
+            given as the first argument. For example, in the definition of
+            <function>scale-objs</function> on page 115, we had to write
+        </para>
+        <programlisting><![CDATA[
+(setf (obj-dx o) (* (obj-dx o) factor))]]>
+        </programlisting>
+        <para>With <function>_f</function> this will become</para>
+        <programlisting><![CDATA[
+(_f * (obj-dx o) factor)
+]]></programlisting>
+        <para>
+            The incorrect way to write <function>_f</function> would be:
+        </para>
+        <programlisting><![CDATA[
+(defmacro _f (op place &rest args)     ; wrong
+  `(setf ,place (,op ,place ,@args)))]]>
+        </programlisting>
+        <para>
+            Unfortunately, we can't define a correct <function>_f</function> with
+            <function>define-modify-macro</function>, because the operator to be applied to the
+            generalized variable is given as an argument.
+        </para>
+        <para>
+            More complex macros like this one have to be written by hand. To
+            make such macros easier to write, Common Lisp provides the function
+            <function>get-setf-method</function>, which takes a generalized variable and returns all
+            the information necessary to retrieve or set its value. We will see
+            how to use this information by hand-generating an expansion
+            for:
+        </para>
+        <programlisting><![CDATA[
+(incf (aref a (incf i)))]]>
+        </programlisting>
+        <para>
+            When we call <function>get-setf-method</function> on the generalized variable, we get
+            five values intended for use as ingredients in the
+            macroexpansion:
+        </para>
+        <programlisting><![CDATA[
+> (get-setf-method '(aref a (incf i)))
+(#:G4 #:G5)
+(A (INCF I))
+(#:G6)
+(SYSTEM:SET-AREF #:G6 #:G4 #:G5)
+(AREF #:G4 #:G5)]]>
+        </programlisting>
+        <para>
+            The first two values are lists of temporary variables and the
+            values that should be assigned to them. So we can begin the
+            expansion with:
+        </para>
+        <programlisting><![CDATA[
+(let* ((#:g4 a)
+       (#:g5 (incf i)))
+  ...)]]>
+        </programlisting>
+        <para>
+            These bindings should be created in a <function>let*</function> because in the
+            general case the value forms can refer to earlier variables. The
+            third<footnote>
+                <para>
+                    The third value is currently always a list of one element.
+                    It is returned as a list to provide the (so far unconsummated)
+                    potential to store multiple values in generalized variables.
+                </para>
+            </footnote>
+            and fifth values are another temporary
+            variable and the form that will return the original value of the
+            generalized variable. Since we want to add 1 to this value, we wrap
+            the latter in a call to <function>1+</function>:
+        </para>
+        <programlisting><![CDATA[
+(let* ((#:g4 a)
+       (#:g5 (incf i))
+       (#:g6 (1+ (aref #:g4 #:g5))))
+  ...)]]>
+        </programlisting>
+        <para>
+            Finally, the fourth value returned by <function>get-setf-method</function> is the
+            assignment that must be made within the scope of the new
+            bindings:
+        </para>
+        <programlisting><![CDATA[
+(let* ((#:g4 a)
+       (#:g5 (incf i))
+       (#:g6 (1+ (aref #:g4 #:g5))))
+  (system:set-aref #:g6 #:g4 #:g5))]]>
+        </programlisting>
+        <para>
+            More often than not, this form will refer to internal functions
+            which are not part of Common Lisp. Usually <function>setf</function>
+            masks the presence of these functions, but they have to exist somewhere.
+            Everything about them is implementation-dependent, so portable code should use
+            forms returned by <function>get-setf-method</function>, rather than referring directly
+            to functions like <function>system:set-aref</function>.
+        </para>
+        <para>
+            Now to implement <function>_f</function> we write a macro which does almost exactly
+            what we did when expanding <function>incf</function> by hand. The only difference is
+            that, instead of wrapping the last form in the <function>let*</function> in a call to
+            <function>1+</function>, we wrap it in an expression made from the arguments to
+            <function>_f</function>. The definition of <function>_f</function> is shown
+            in <xref linkend="more-complex-macros-on-setf"/>.
+        </para>
+        <figure xml:id="more-complex-macros-on-setf">
+            <title>More complex macros on setf.</title>
+            <programlisting><![CDATA[
+(defmacro _f (op place &rest args)
+  (multiple-value-bind (vars forms var set access)
+      (get-setf-method place)
+    `(let* (,@(mapcar #'list vars forms)
+               (,(car var) (,op ,access ,@args)))
+       ,set)))
+
+(defmacro pull (obj place &rest args)
+  (multiple-value-bind (vars forms var set access)
+      (get-setf-method place)
+    (let ((g (gensym)))
+      `(let* ((,g ,obj)
+              ,@(mapcar #'list vars forms)
+              (,(car var) (delete ,g ,access ,@args)))
+         ,set))))
+
+(defmacro pull-if (test place &rest args)
+  (multiple-value-bind (vars forms var set access)
+      (get-setf-method place)
+    (let ((g (gensym)))
+      `(let* ((,g ,test)
+              ,@(mapcar #'list vars forms)
+              (,(car var) (delete-if ,g ,access ,@args)))
+         ,set))))
+
+(defmacro popn (n place)
+  (multiple-value-bind (vars forms var set access)
+      (get-setf-method place)
+    (with-gensyms (gn glst)
+                  `(let* ((,gn ,n)
+                          ,@(mapcar #'list vars forms)
+                          (,glst ,access)
+                          (,(car var) (nthcdr ,gn ,glst)))
+                     (prog1 (subseq ,glst 0 ,gn)
+                       ,set)))))]]>
+        </programlisting>
+        </figure>
+        <!-- <a name="IDX62" id="IDX62"></a> -->
+        <para>
+            This utility is quite a useful one. Now that we have it, for
+            example, we can easily replace any named function with a memoized
+            (<xref linkend="memoizing"/>) equivalent.<footnote>
+                <para>
+                    Built-in functions should not be memoized in this way, though.
+                    Common Lisp forbids the redefinition of built-in functions.
+                </para>
+            </footnote>
+            To memoize foo we would say:
+        </para>
+        <programlisting><![CDATA[
+(_f memoize (symbol-function 'foo))]]>
+        </programlisting>
+        <para>
+            Having <function>_f</function> also makes it easy to define other
+            macros on <function>setf</function>. For
+            example, we could now define <function>conc1f</function>
+            (<xref linkend="list-operations-on-generalized-variables"/> ) as:
+        </para>
+        <programlisting><![CDATA[
+(defmacro conc1f (lst obj)
+  `(_f nconc ,lst (list ,obj)))]]>
+        </programlisting>
+        <para>
+            <xref linkend="more-complex-macros-on-setf"/>
+            contains some other useful macros on <function>setf</function>. The next,
+            pull, is intended as a complement to the built-in <function>pushnew</function>.
+            The pair are like more discerning versions of <function>push</function>
+            and <function>pop</function>; <function>pushnew</function> pushes a
+            new element onto a list if it is not already a member, and pull
+            destructively removes selected elements from a list. The <varname>&amp;rest</varname>
+            parameter in <function>pull</function>'s definition makes <function>pull</function>
+            able to accept all the same keyword parameters as <function>delete</function>:
+        </para>
+        <programlisting><![CDATA[
+> (setq x '(1 2 (a b) 3))
+(1 2 (A B) 3)
+> (pull 2 x)
+(1 (A B) 3)
+> (pull '(a b) x :test #'equal)
+(1 3)
+> x
+(1 3)]]>
+        </programlisting>
+        <para>
+            You could almost think of this macro as if it were defined:
+        </para>
+        <programlisting><![CDATA[
+(defmacro pull (obj seq &rest args)    ; wrong
+  `(setf ,seq (delete ,obj ,seq ,@args)))]]>
+        </programlisting>
+        <para>though if it really were defined that way, it would be subject
+            to problems with both order and number of evaluations. We could
+            define a version of <function>pull</function> as a simple modify-macro:
+        </para>
+        <programlisting><![CDATA[
+(define-modify-macro pull (obj &rest args)
+  (lambda (seq obj &rest args)
+    (apply #'delete obj seq args)))]]>
+        </programlisting>
+        <para>but since modify-macros must take the generalized variable as
+            their first argument, we would have to give the first two arguments
+            in reverse order, which would be less intuitive.
+        </para>
+        <para>
+            The more general <function>pull-if</function> takes an initial
+            function argument, and expands into a <function>delete-if</function>
+            instead of a <function>delete</function>:
+        </para>
+        <programlisting><![CDATA[
+> (let ((lst '(1 2 3 4 5 6)))
+(pull-if #'oddp lst)
+lst)
+(2 4 6)]]>
+        </programlisting>
+        <para>
+            These two macros illustrate another general point. If the
+            underlying function takes optional arguments, so should the macro
+            built upon it. Both pull and <function>pull-if</function> pass optional
+            arguments on to their deletes.
+        </para>
+        <para>
+            The final macro in <xref linkend="more-complex-macros-on-setf"/>,
+            <function>popn</function>, is a generalization of <function>pop</function>.
+            Instead of popping just one element of a list, it pops and
+            returns a subsequence of arbitrary length:
+        </para>
+        <programlisting><![CDATA[
+> (setq x '(a b c d e f))
+(A B C D E F)
+> (popn 3 x)
+(A B C)
+> x
+(D E F)]]>
+        </programlisting>
+        <para>
+            <xref linkend="a-macro-which-sorts-its-arguments"/> contains
+            a macro which sorts its arguments. If x and y are variables
+            and we want to ensure that x does not have the lower of the two
+            values, we can write:
+        </para>
+        <programlisting><![CDATA[
+(if (> y x) (rotatef x y))]]>
+        </programlisting>
+        <para>
+            But if we want to do this for three or more variables, the code
+            required grows rapidly. Instead of writing it by hand, we can have
+            <function>sortf</function> write it for us.
+            This macro takes a comparison operator plus
+            any number of generalized variables, and swaps their values until
+            they are in the order dictated by the operator. In the simplest
+            case, the arguments could be ordinary variables:
+        </para>
+        <programlisting><![CDATA[
+> (setq x 1 y 2 z 3)
+3
+> (sortf > x y z)
+3
+> (list x y z)
+(3 2 1)]]>
+        </programlisting>
+        <figure xml:id="a-macro-which-sorts-its-arguments">
+            <title>A macro which sorts its arguments.</title>
+            <programlisting><![CDATA[
+(defmacro sortf (op &rest places)
+  (let* ((meths (mapcar #'(lambda (p)
+                            (multiple-value-list
+                             (get-setf-method p)))
+                        places))
+         (temps (apply #'append (mapcar #'third meths))))
+    `(let* ,(mapcar #'list
+                    (mapcan #'(lambda (m)
+                                (append (first m)
+                                        (third m)))
+                            meths)
+                    (mapcan #'(lambda (m)
+                                (append (second m)
+                                        (list (fifth m))))
+                            meths))
+       ,@(mapcon #'(lambda (rest)
+                      (mapcar
+                       #'(lambda (arg)
+                           `(unless (,op ,(car rest) ,arg)
+                              (rotatef ,(car rest) ,arg)))
+                       (cdr rest)))
+                  temps)
+       ,@(mapcar #'fourth meths))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX63" id="IDX63"></a> -->
+        <para>
+            In general, they could be any invertible expressions. Suppose
+            cake is an invertible function which returns someone's piece of
+            cake, and bigger is a comparison function defined on pieces of
+            cake. If we want to enforce the rule that the cake of moe is no
+            less than the cake of larry, which is no less than that of curly,
+            we write:
+        </para>
+        <programlisting><![CDATA[
+(sortf bigger (cake 'moe) (cake 'larry) (cake 'curly))]]>
+        </programlisting>
+        <para>
+            The definition of <function>sortf</function> is similar in outline
+            to that of <function>_f</function>. It begins with a
+            <function>let*</function> in which the temporary variables returned by
+            <function>get-setf-method</function> are bound to the initial values of the generalized
+            variables. The core of <function>sortf</function> is the central
+            <function>mapcon</function> expression,
+            which generates code to sort these temporary variables. The code
+            generated by this portion of the macro grows exponentially with the
+            number of arguments. After sorting, the generalized variables are
+            reassigned using the forms returned by <function>get-setf-method</function>.
+            The algorithm used is the O(n^2) bubble-sort, but this macro is not
+            intended to be called with huge numbers of arguments.
+        </para>
+        <para>
+            <xref linkend="expansion-of-a-call-to-sortf"/>
+            shows the expansion of a call to <function>sortf</function>. In the
+            initial <function>let*</function>, the arguments and their subforms are carefully
+            evaluated in left-to-right order. Then appear three expressions
+            which compare and possibly swap the values of the temporary
+            variables: the first is compared to the second, then the first to
+            the third, then the second to the third. Finally the the
+            generalized variables are reassigned left-to-right. Although the
+            issue rarely arises, macro arguments should usually be assigned
+            left-to-right, as well as being evaluated in this order.
+        </para>
+        <figure xml:id="expansion-of-a-call-to-sortf">
+            <title>Expansion of a call to <function>sortf</function>.</title>
+            <programlisting><![CDATA[
+(sortf > x (aref ar (incf i)) (car lst))]]>
+            </programlisting>
+            <para>expands (in one possible implementation) into:</para>
+            <programlisting><![CDATA[
+(let* ((#:g1 x)
+       (#:g4 ar)
+       (#:g3 (incf i))
+       (#:g2 (aref #:g4 #:g3))
+       (#:g6 lst)
+       (#:g5 (car #:g6)))
+  (unless (> #:g1 #:g2)
+    (rotatef #:g1 #:g2))
+  (unless (> #:g1 #:g5)
+    (rotatef #:g1 #:g5))
+  (unless (> #:g2 #:g5)
+    (rotatef #:g2 #:g5))
+  (setq x #:g1)
+  (system:set-aref #:g2 #:g4 #:g3)
+  (system:set-car #:g6 #:g5))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX64" id="IDX64"></a> -->
+        <para>
+            Operators like <function>_f</function> and <function>sortf</function>
+            bear a certain resemblance to
+            functions that take functional arguments. It should be understood
+            that they are something quite different. A function like <function>find-if</function>
+            takes a function and calls it; a macro like <function>_f</function> takes a name, and
+            makes it the <function>car</function> of an expression.
+            Both <function>_f</function> and <function>sortf</function> could have been
+            written to take functional arguments. For example,
+            <function>_f</function> could have been written:
+        </para>
+        <programlisting><![CDATA[
+(defmacro _f (op place &rest args)
+  (let ((g (gensym)))
+    (multiple-value-bind (vars forms var set access)
+        (get-setf-method place)
+      `(let* ((,g ,op)
+              ,@(mapcar #'list vars forms)
+              (,(car var) (funcall ,g ,access ,@args)))
+         ,set))))]]>
+        </programlisting>
+        <para>
+            and called <code>(_f #'+ x 1)</code>. But the original version of
+            <function>_f</function> can do
+            anything this one could, and since it deals in names, it can also
+            take the name of a macro or special form. As well as
+            <function>+</function>, you could call, for example,
+            <function>nif</function> (page 150):
+        </para>
+        <programlisting><![CDATA[
+> (let ((x 2))
+(_f nif x 'p 'z 'n)
+x)
+P]]>
+        </programlisting>
+    </section>
+    <section xml:id="defining-inversions" xreflabel="Defining Inversions">
+        <title>Defining Inversions</title>
+        <para>
+            <xref linkend="the-concept"/> explained that any macro call which expands into an
+            invertible reference will itself be invertible. You don't have to
+            define operators as macros just to make them invertible, though. By
+            using <function>defsetf</function> you can tell Lisp how to
+            invert any function or macro call.
+        </para>
+        <para>
+            This macro can be used in two ways. In the simplest case, its
+            arguments are two symbols:
+        </para>
+        <programlisting><![CDATA[
+(defsetf symbol-value set)]]>
+        </programlisting>
+        <para>
+            In the more complicated form, a call to <function>defsetf</function>
+            is like a call to <function>defmacro</function>, with an
+            additional parameter for the updated value form.
+            For example, this would define a possible inversion for <function>car</function>:
+        </para>
+        <programlisting><![CDATA[
+(defsetf car (lst) (new-car)
+  `(progn (rplaca ,lst ,new-car)
+          ,new-car))]]>
+        </programlisting>
+        <para>
+            There is one important difference between <function>defmacro</function>
+            and <function>defsetf</function>:
+            the latter automatically creates gensyms for its arguments. With
+            the definition given above, <code>(setf (car x) y)</code> would expand into:
+        </para>
+        <programlisting><![CDATA[
+(let* ((#:g2 x)
+       (#:g1 y))
+  (progn (rplaca #:g2 #:g1)
+         #:g1))]]>
+        </programlisting>
+        <figure xml:id="an-asymmetric-inversion">
+            <title>An asymmetric inversion.</title>
+            <programlisting><![CDATA[
+(defvar *cache* (make-hash-table))
+
+(defun retrieve (key)
+  (multiple-value-bind (x y) (gethash key *cache*)
+    (if y
+        (values x y)
+      (cdr (assoc key *world*)))))
+
+(defsetf retrieve (key) (val)
+  `(setf (gethash ,key *cache*) ,val))]]>
+        </programlisting>
+        </figure>
+        <!-- <a name="IDX65" id="IDX65"></a> -->
+        <para>
+            Thus we can write <function>defsetf</function>
+            expanders without having to worry
+            about variable capture, or number or order of evaluations.
+        </para>
+        <para>
+            In CLTL2 Common Lisp, it is possible to define
+            <function>setf</function> inversions directly with
+            <function>defun</function>, so the previous example could also be
+            written:
+        </para>
+        <programlisting><![CDATA[
+(defun (setf car) (new-car lst)
+  (rplaca lst new-car)
+  new-car)]]>
+        </programlisting>
+        <para>
+            The updated value should be the first parameter in such a
+            function. It is also conventional to return this value as the value
+            of the function.
+        </para>
+        <para>
+            The examples so far have suggested that generalized variables
+            are supposed to refer to a place in a data structure. The villain
+            carries his hostage down to the dungeon, and the rescuing hero
+            carries her back up again; they both follow the same path, but in
+            different directions. It's not surprising if people have the
+            impression that <function>setf</function> must work this way,
+            because all the predefined
+            inversions seem to be of this form; indeed, place is the
+            conventional name for a parameter which is to be inverted.
+        </para>
+        <para>
+            In principle, <function>setf</function> is more general: an access form and its
+            inversion need not even operate on the same data structure. Suppose
+            that in some application we want to cache database updates. This
+            could be necessary, for example, if it were not efficient to do
+            real updates on the fly, or if all the updates had to be verified
+            for consistency before committing to them.
+        </para>
+        <para>
+            Suppose that <varname>*world*</varname> is the actual database. For simplicity, we
+            will make it an assoc-list whose elements are of the form
+            <code>(key . val)</code>.
+            <xref linkend="an-asymmetric-inversion"/> shows a lookup
+            function called retrieve. If <varname>*world*</varname> is
+        </para>
+        <programlisting><![CDATA[
+((a . 2) (b . 16) (c . 50) (d . 20) (f . 12))]]>
+        </programlisting>
+        <para>then</para>
+        <programlisting><![CDATA[
+> (retrieve 'c)
+50]]>
+        </programlisting>
+        <para>
+            Unlike a call to <function>car</function>, a call to
+            <function>retrieve</function> does not refer to a
+            specific place in a data structure. The return value could come
+            from one of two places. And the inversion of retrieve, also defined
+            in <xref linkend="an-asymmetric-inversion"/>, only refers to one of them:
+        </para>
+        <programlisting><![CDATA[
+> (setf (retrieve 'n) 77)
+77
+> (retrieve 'n)
+77
+T]]>
+        </programlisting>
+        <para>
+            This lookup returns a second value of <constant>t</constant>, indicating that the
+            answer was found in the cache.
+        </para>
+        <para>
+            Like macros themselves, generalized variables are an abstraction
+            of remarkable power. There is probably more to be discovered here.
+            Certainly individual users are likely to discover ways in which the
+            use of generalized variables could lead to more elegant or more
+            powerful programs. But it may also be possible to use <function>setf</function>
+            inversion in new ways, or to discover other classes of similarly
+            useful transformations.
+        </para>
+    </section>
+</chapter>

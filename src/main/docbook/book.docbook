@@ -38,5 +38,7 @@
     <xi:include href="when-to-use-macros.docbook"/>
     <xi:include href="variable-capture.docbook"/>
     <xi:include href="other-macro-pitfalls.docbook"/>
+    <xi:include href="classic-macros.docbook"/>
+    <xi:include href="generalized-variables.docbook"/>
 
 </book>

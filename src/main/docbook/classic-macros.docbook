@@ -1,0 +1,1216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<chapter version="5.0"
+         xml:lang="en"
+         xml:id="classic-macros"
+         xreflabel="Classic Macros"
+         xmlns="http://docbook.org/ns/docbook"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:xml="http://www.w3.org/XML/1998/namespace"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         xsi:schemaLocation="http://docbook.org/ns/docbook
+                             http://www.docbook.org/xml/5.0/xsd/docbook.xsd
+                             http://www.w3.org/1999/xlink
+                             http://www.docbook.org/xml/5.0/xsd/xlink.xsd
+                             http://www.w3.org/XML/1998/namespace
+                             http://www.docbook.org/xml/5.0/xsd/xml.xsd">
+    <title>Classic Macros</title>
+    <para>
+        This chapter shows how to define the most commonly used types of
+        macros. They fall into three categories - with a fair amount of
+        overlap. The first group are macros which create context. Any
+        operator which causes its arguments to be evaluated in a new
+        context will probably have to be defined as a macro. The first two
+        sections describe the two basic types of context, and show how to
+        define macros for each.
+    </para>
+    <para>
+        The next three sections describe macros for conditional and
+        repeated evaluation. An operator whose arguments are to be
+        evaluated less than once, or more than once, must also be defined
+        as a macro. There is no sharp distinction between operators for
+        conditional and repeated evaluation: some of the examples in this
+        chapter do both (as well as binding). The final section explains
+        another similarity between conditional and repeated evaluation: in
+        some cases, both can be done with functions.
+    </para>
+    <section xml:id="creating-context" xreflabel="Creating Context">
+        <title>Creating Context</title>
+        <para>
+            Context here has two senses. One sort of context is a lexical
+            environment. The let special form creates a new lexical
+            environment; the expressions in the body of a let will be evaluated
+            in an environment which may contain new variables.
+            If <varname>x</varname> is set to <constant>a</constant> at the toplevel, then
+        </para>
+        <programlisting><![CDATA[
+(let ((x 'b)) (list x))]]>
+        </programlisting>
+        <para>
+            will nonetheless return <code>(b)</code>, because the call to list will be
+            made in an environment containing a new <varname>x</varname>,
+            whose value is <varname>b</varname>.
+        </para>
+        <figure xml:id="macro-implementation-of-let">
+            <title>Macro implementation of <function>let</function>.</title>
+            <programlisting><![CDATA[
+(defmacro our-let (binds &body body)
+  `((lambda ,(mapcar #'(lambda (x)
+                         (if (consp x) (car x) x))
+                     binds)
+      ,@body)
+    ,@(mapcar #'(lambda (x)
+                   (if (consp x) (cadr x) nil))
+               binds)))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX46" id="IDX46"></a> -->
+        <para>
+            An operator which is to have a body of expressions must usually
+            be defined as a macro. Except for cases like
+            <function>prog1</function> and <function>progn</function>, the
+            purpose of such an operator will usually be to cause the body to be
+            evaluated in some new context. A macro will be needed to wrap
+            context-creating code around the body, even if the context does not
+            include new lexical variables.
+        </para>
+        <para>
+            <xref id="macro-implementation-of-let"/> shows how let could be
+            defined as a macro on lambda.
+            An <function>our-let</function> expands into a function application -
+        </para>
+        <programlisting><![CDATA[
+(our-let ((x 1) (y 2))
+         (+ x y))]]>
+        </programlisting>
+        <para>expands into</para>
+        <programlisting><![CDATA[
+((lambda (x y) (+ x y)) 1 2)]]>
+        </programlisting>
+        <para>
+            <xref linkend="macros-which-bind-variables"/>
+            contains three new macros which establish lexical
+            environments. <xref linkend="desctructuring-in-parameter-lists"/>
+            used <function>when-bind</function> as an example of parameter
+            list destructuring, so this macro
+            has already been described on page 94. The more general
+            <function>when-bind*</function> takes a list of pairs of the
+            form (symbol expression) - the same form as the first argument to
+            let. If any expression returns <constant>nil</constant>, the whole
+            <function>when-bind*</function>
+            expression returns <constant>nil</constant>.
+            Otherwise its body will be evaluated with each symbol
+            bound as if by <function>let*</function>:
+        </para>
+        <programlisting><![CDATA[
+> (when-bind* ((x (find-if #'consp '(a (1 2) b)))
+(y (find-if #'oddp x)))
+(+ y 10))
+11]]>
+        </programlisting>
+        <para>
+            Finally, the macro <function>with-gensyms</function>
+            is itself for use in writing macros.
+            Many macro definitions begin with the creation of <function>gensyms</function>,
+            sometimes quite a number of them. The macro <function>with-redraw</function>
+            (page 115) had to create five:
+        </para>
+        <programlisting><![CDATA[
+(defmacro with-redraw ((var objs) &body body)
+  (let ((gob (gensym))
+        (x0 (gensym)) (y0 (gensym))
+        (x1 (gensym)) (y1 (gensym)))
+    ...))]]>
+        </programlisting>
+        <para>
+            Such definitions are simplified by <function>with-gensyms</function>, which binds a
+            whole list of variables to gensyms. With the new macro we would
+            write just:
+        </para>
+        <programlisting><![CDATA[
+(defmacro with-redraw ((var objs) &body body)
+  (with-gensyms (gob x0 y0 x1 y1)
+                ...))]]>
+        </programlisting>
+        <figure xml:id="macros-which-bind-variables">
+            <title>Macros which bind variables.</title>
+            <programlisting><![CDATA[
+(defmacro when-bind ((var expr) &body body)
+  `(let ((,var ,expr))
+     (when ,var
+       ,@body)))
+
+(defmacro when-bind* (binds &body body)
+  (if (null binds)
+      `(progn ,@body)
+    `(let (,(car binds))
+       (if ,(caar binds)
+           (when-bind* ,(cdr binds) ,@body)))))
+
+(defmacro with-gensyms (syms &body body)
+  `(let ,(mapcar #'(lambda (s)
+                     `(,s (gensym)))
+                 syms)
+     ,@body))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX47" id="IDX47"></a> -->
+        <para>
+            This new macro will be used throughout the remaining chapters.
+        </para>
+        <para>
+            If we want to bind some variables and then, depending on some
+            condition, evaluate one of a set of expressions, we just use a
+            conditional within a let:
+        </para>
+        <programlisting><![CDATA[
+(let ((sun-place 'park) (rain-place 'library))
+  (if (sunny)
+      (visit sun-place)
+    (visit rain-place)))]]>
+        </programlisting>
+        <figure xml:id="combination-of-cond-and-let">
+            <title>Combination of <function>cond</function> and <function>let</function>.</title>
+            <programlisting><![CDATA[
+(defmacro condlet (clauses &body body)
+  (let ((bodfn (gensym))
+        (vars (mapcar #'(lambda (v) (cons v (gensym)))
+                      (remove-duplicates
+                       (mapcar #'car
+                               (mappend #'cdr clauses))))))
+    `(labels ((,bodfn ,(mapcar #'car vars)
+                      ,@body))
+       (cond ,@(mapcar #'(lambda (cl)
+                            (condlet-clause vars cl bodfn))
+                        clauses)))))
+
+(defun condlet-clause (vars cl bodfn)
+  `(,(car cl) (let ,(mapcar #'cdr vars)
+                (let ,(condlet-binds vars cl)
+                  (,bodfn ,@(mapcar #'cdr vars))))))
+
+(defun condlet-binds (vars cl)
+  (mapcar #'(lambda (bindform)
+              (if (consp bindform)
+                  (cons (cdr (assoc (car bindform) vars))
+                        (cdr bindform))))
+          (cdr cl)))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX48" id="IDX48"></a> -->
+        <para>
+            Unfortunately, there is no convenient idiom for the opposite
+            situation, where we always want to evaluate the same code, but
+            where the bindings must vary depending on some condition.
+        </para>
+        <para>
+            <xref linkend="combination-of-cond-and-let"/>
+            contains a macro intended for such situations. As
+            its name suggests, <function>condlet</function>
+            behaves like the offspring of <function>cond</function> and
+            <function>let</function>. It takes as arguments a list of binding clauses, followed by a
+            body of code. Each of the binding clauses is guarded by a test
+            expression; the body of code will be evaluated with the bindings
+            specified by the first binding clause whose test expression returns
+            true. Variables which occur in some clauses and not others will be
+            bound to nil if the successful clause does not specify bindings for
+            them:
+        </para>
+        <programlisting><![CDATA[
+> (condlet (((= 1 2) (x (princ 'a)) (y (princ 'b)))
+((= 1 1) (y (princ 'c)) (x (princ 'd)))
+(t (x (princ 'e)) (z (princ 'f))))
+(list x y z))
+CD
+(D C NIL)]]>
+        </programlisting>
+        <para>
+            The definition of <function>condlet</function>
+            can be understood as a generalization
+            of the definition of our-let. The latter makes its body into a
+            function, which is applied to the results of evaluating the
+            initial-value forms. A <function>condlet</function>
+            expands into code which defines a local function with labels; within it a
+            <function>cond</function> clause determines
+            which set of initial-value forms will be evaluated and passed to
+            the function.
+        </para>
+        <para>
+            Notice that the expander uses <function>mappend</function>
+            instead of <function>mapcan</function> to
+            extract the variable names from the binding clauses. This is
+            because <function>mapcan</function>
+            is destructive, and as <xref linkend="non-functional-expanders"/> warned,
+            it is dangerous to modify parameter list structure.
+        </para>
+    </section>
+    <section xml:id="the-with-macro" xreflabel="The with- Macro">
+        <title>The with- Macro</title>
+        <para>
+            There is another kind of context besides a lexical environment.
+            In the broader sense, the context is the state of the world,
+            including the values of special variables, the contents of data
+            structures, and the state of things outside Lisp. Operators which
+            build this kind of context must be defined as macros too, unless
+            their code bodies are to be packaged up in closures.
+        </para>
+        <para>
+            The names of context-building macros often begin with <code>with-</code>.
+            The most commonly used macro of this type is probably
+            <function>with-open-file</function>.
+            Its body is evaluated with a newly opened file bound to a
+            user-supplied variable:
+        </para>
+        <programlisting><![CDATA[
+(with-open-file (s "dump" :direction :output)
+                (princ 99 s))]]>
+        </programlisting>
+        <para>
+            After evaluation of this expression the file "dump" will
+            automatically be closed, and its contents will be the two
+            characters "99".
+        </para>
+        <para>
+            This operator clearly has to be defined as a macro,because it
+            binds s. However, operators which cause forms to be evaluated in a
+            new context must be defined as macros anyway. The
+            <function>ignore-errors</function>
+            macro, new in CLTL2, causes its arguments to be evaluated as if in
+            a <function>progn</function>. If an error occurs at any point,
+            the whole <function>ignore-errors</function>
+            form simply returns <constant>nil</constant>.
+            (This would be useful, for example, when
+            reading input typed by the user.) Though ignore-errors creates no
+            variables, it still must be defined as a macro, because its
+            arguments are evaluated in a new context.
+        </para>
+        <para>
+            Generally, macros which create context will expand into a block
+            of code; additional expressions may be placed before the body,
+            after it, or both. If code occurs after the body, its purpose may
+            be to leave the system in a consistent state - to clean up
+            something. For example, <function>with-open-file</function>
+            has to close the file it
+            opened. In such situations, it is typical to make the
+            context-creating macro expand into an <function>unwind-protect</function>.
+        </para>
+        <para>
+            The purpose of <function>unwind-protect</function>
+            is to ensure that certain
+            expressions are evaluated even if execution is interrupted. It
+            takes one or more arguments, which are evaluated in order. If all
+            goes smoothly it will return the value of the first argument, like
+            a <function>prog1</function>. The difference is, the remaining arguments will be
+            evaluated even if an error or throw interrupts evaluation of the
+            first.
+        </para>
+        <programlisting><![CDATA[
+> (setq x 'a)
+A
+> (unwind-protect
+(progn (princ "What error?")
+(error "This error."))
+(setq x 'b))
+What error?
+>>Error: This error.]]>
+        </programlisting>
+        <para>
+            The unwind-protect form as a whole yields an error. However,
+            after returning to the toplevel, we notice that the second argument
+            still got evaluated:
+        </para>
+        <programlisting><![CDATA[
+> x
+B]]>
+        </programlisting>
+        <para>
+            Because <function>with-open-file</function>
+            expands into an <function>unwind-protect</function>, the file
+            it opens will usually be closed even if an error occurs during the
+            evaluation of its body.
+        </para>
+        <para>
+            Context-creating macros are mostly written for specific
+            applications. As an example, suppose we are writing a program which
+            deals with multiple, remote databases. The program talks to one
+            database at a time, indicated by the global variable <varname>*db*</varname>.
+            Before using a database, we have to lock it, so that no one else can use
+            it at the same time. When we are finished we have to release the
+            lock. If we want the value of the query <varname>q</varname> on the
+            database <varname>db</varname>, we might say something like:
+        </para>
+        <programlisting><![CDATA[
+(let ((temp *db*))
+  (setq *db* db)
+  (lock *db*)
+  (prog1 (eval-query q)
+    (release *db*)
+    (setq *db* temp)))]]>
+        </programlisting>
+        <para>
+            With a macro we can hide all this bookkeeping.
+            <xref linkend="a-typical-with-macro"/>
+            defines a macro which will allow us to deal with databases at a
+            higher level of abstraction. Using <function>with-db</function>,
+            we would say just:
+        </para>
+        <programlisting><![CDATA[
+(with-db db
+         (eval-query q))]]>
+        </programlisting>
+        <figure xml:id="a-typical-with-macro">
+            <title>A typical <code>with-</code> macro.</title>
+            <para>Pure macro:</para>
+            <programlisting><![CDATA[
+(defmacro with-db (db &body body)
+  (let ((temp (gensym)))
+    `(let ((,temp *db*))
+       (unwind-protect
+           (progn
+             (setq *db* ,db)
+             (lock *db*)
+             ,@body)
+         (progn
+           (release *db*)
+           (setq *db* ,temp))))))]]>
+            </programlisting>
+            <para>
+                Combination of macro and function:
+            </para>
+            <programlisting><![CDATA[
+(defmacro with-db (db &body body)
+  (let ((gbod (gensym)))
+    `(let ((,gbod #'(lambda () ,@body)))
+       (declare (dynamic-extent ,gbod))
+       (with-db-fn *db* ,db ,gbod))))
+
+(defun with-db-fn (old-db new-db body)
+  (unwind-protect
+      (progn
+        (setq *db* new-db)
+        (lock *db*)
+        (funcall body))
+    (progn
+      (release *db*)
+      (setq *db* old-db))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX49" id="IDX49"></a> -->
+        <para>
+            Calling <function>with-db</function> is also safer,
+            because it expands into an <function>unwind-protect</function>
+            instead of a simple <function>prog1</function>.
+        </para>
+        <para>
+            The two definitions of <function>with-db</function>
+            in <xref linkend="a-typical-with-macro"/> illustrate two
+            possible ways to write this kind of macro. The first is a pure
+            macro, the second a combination of a function and a macro. The
+            second approach becomes more practical as the desired
+            <code>with-</code> macro grows in complexity.
+        </para>
+        <figure xml:id="macros-for-conditional-evaluation">
+            <title>Macros for conditional evaluation.</title>
+            <programlisting><![CDATA[
+(defmacro if3 (test t-case nil-case ?-case)
+  `(case ,test
+     ((nil) ,nil-case)
+     (? ,?-case)
+     (t ,t-case)))
+
+(defmacro nif (expr pos zero neg)
+  (let ((g (gensym)))
+    `(let ((,g ,expr))
+       (cond ((plusp ,g) ,pos)
+             ((zerop ,g) ,zero)
+             (t ,neg)))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX50" id="IDX50"></a> -->
+        <para>
+            In CLTL2 Common Lisp, the dynamic-extent declaration allows the
+            closure containing the body to be allocated more efficiently (in
+            CLTL1 implementations, it will be ignored). We only need this
+            closure for the duration of the call to <function>with-db-fn</function>, and the
+            declaration says as much, allowing the compiler to allocate space
+            for it on the stack. This space will be reclaimed automatically on
+            exit from the let expression, instead of being reclaimed later by
+            the garbage-collector.
+        </para>
+    </section>
+    <section xml:id="conditional-evaluation"
+             xreflabel="Conditional Evaluation">
+        <title>Conditional Evaluation</title>
+        <para>
+            Sometimes we want an argument in a macro call to be evaluated
+            only under certain conditions. This is beyond the ability of
+            functions, which always evaluate all their arguments. Built-in
+            operators like if, and, and <code>cond</code> protect some of their arguments
+            from evaluation unless other arguments return certain values. For
+            example, in this expression
+        </para>
+        <programlisting><![CDATA[
+(if t
+    'phew
+  (/ x 0))]]>
+        </programlisting>
+        <para>the third argument would cause a division-by-zero error if it
+            were evaluated. But since only the first two arguments ever will be
+            evaluated, the if as a whole will always safely return phew.
+        </para>
+        <para>
+            We can create new operators of this sort by writing macros which
+            expand into calls to the existing ones. The two macros in
+            <xref linkend="macros-for-conditional-evaluation"/>
+            are two of many possible variations on if. The definition of
+            if3 shows how we could define a conditional for a three-valued
+            logic. Instead of treating nil as false and everything else as
+            true, this macro considers three categories of truth: true, false,
+            and uncertain, represented as ?. It might be used as in the
+            following description of a five year-old:
+        </para>
+        <programlisting><![CDATA[
+(while (not sick)
+  (if3 (cake-permitted)
+       (eat-cake)
+       (throw 'tantrum nil)
+       (plead-insistently)))]]>
+        </programlisting>
+        <para>
+            The new conditional expands into a case. (The <constant>nil</constant>
+            key has to be enclosed within a <function>list</function> because a
+            <constant>nil</constant> key alone would be ambiguous.)
+            Only one of the last three arguments will be evaluated, depending
+            on the value of the first.
+        </para>
+        <para>
+            The name <function>nif</function> stands for "numeric if." Another implementation of
+            this macro appeared on page 86. It takes a numeric expression as
+            its first argument, and depending on its sign evaluates one of the
+            remaining three arguments.
+        </para>
+        <programlisting><![CDATA[
+> (mapcar #'(lambda (x)
+(nif x 'p 'z 'n))
+'(0 1 -1))
+(Z P N)]]>
+        </programlisting>
+        <para>
+            <xref linkend="macros-for-conditional-evaluation-2"/>
+            contains several more macros which take advantage of
+            conditional evaluation. The macro in is to test efficiently for set
+            membership. When you want to test whether an object is one of a set
+            of alternatives, you could express the query as a disjunction:
+        </para>
+        <programlisting><![CDATA[
+(let ((x (foo)))
+  (or (eql x (bar)) (eql x (baz))))]]>
+        </programlisting>
+        <para>or you could express it in terms of set membership:</para>
+        <programlisting><![CDATA[
+(member (foo) (list (bar) (baz)))]]>
+        </programlisting>
+        <para>
+            The latter is more abstract, but less efficient. The member
+            expression incurs unnecessary costs from two sources. It conses,
+            because it must assemble the alternatives into a list for member to
+            search. And to form the alternatives into a list they all have to
+            be evaluated, even though some of the values may never be needed.
+            If the value of <code>(foo)</code> is equal to the value of
+            <code>(bar)</code>, then there is no need to evaluate <code>(baz)</code>.
+            Whatever its conceptual advantages, this
+            is not a good way to use <function>member</function>.
+            We can get the same abstraction
+            more efficiently with a macro: <function>in</function> combines
+            the abstraction of <function>member</function> with the efficiency of
+            <function>or</function>. The equivalent <function>in</function> expression
+        </para>
+        <programlisting><![CDATA[
+(in (foo) (bar) (baz))]]>
+        </programlisting>
+        <para>has the same shape as the member expression, but expands
+            into
+        </para>
+        <programlisting><![CDATA[
+(let ((#:g25 (foo)))
+  (or (eql #:g25 (bar))
+      (eql #:g25 (baz))))]]>
+        </programlisting>
+        <figure xml:id="macros-for-conditional-evaluation-2">
+            <title>Macros for conditional evaluation.</title>
+            <programlisting><![CDATA[
+(defmacro in (obj &rest choices)
+  (let ((insym (gensym)))
+    `(let ((,insym ,obj))
+       (or ,@(mapcar #'(lambda (c) `(eql ,insym ,c))
+                      choices)))))
+
+(defmacro inq (obj &rest args)
+  `(in ,obj ,@(mapcar #'(lambda (a)
+                           `',a)
+                       args)))
+
+(defmacro in-if (fn &rest choices)
+  (let ((fnsym (gensym)))
+    `(let ((,fnsym ,fn))
+       (or ,@(mapcar #'(lambda (c)
+                          `(funcall ,fnsym ,c))
+                      choices)))))
+
+(defmacro >case (expr &rest clauses)
+  (let ((g (gensym)))
+    `(let ((,g ,expr))
+       (cond ,@(mapcar #'(lambda (cl) (>casex g cl))
+                        clauses)))))
+
+(defun >casex (g cl)
+  (let ((key (car cl)) (rest (cdr cl)))
+    (cond ((consp key) `((in ,g ,@key) ,@rest))
+          ((inq key t otherwise) `(t ,@rest))
+          (t (error "bad >case clause")))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX51" id="IDX51"></a> -->
+        <para>
+            As is often the case, when faced with a choice between a clean
+            idiom and an efficient one, we go between the horns of the dilemma
+            by writing a macro which transforms the former into the latter.
+        </para>
+        <para>
+            Pronounced "in queue," inq is a quoting variant of
+            <function>in</function>, as <function>setq</function>
+            used to be of set. The expression
+        </para>
+        <programlisting><![CDATA[
+(inq operator + - *)]]>
+        </programlisting>
+        <para>expands into</para>
+        <programlisting><![CDATA[
+(in operator '+ '- '*)]]>
+        </programlisting>
+        <para>
+            As member does by default, in and <function>inq</function>
+            use <function>eql</function> to test for
+            equality. When you want to use some other test - or any other
+            function of one argument - you can use the more general
+            <function>in-if</function>. What <function>in</function>
+            is to <function>member</function>, <function>in-if</function>
+            is to <function>some</function>. The expression
+        </para>
+        <programlisting><![CDATA[
+(member x (list a b) :test #'equal)]]>
+        </programlisting>
+        <para>can be duplicated by</para>
+        <programlisting><![CDATA[
+(in-if #'(lambda (y) (equal x y)) a b)]]>
+        </programlisting>
+        <para>and</para>
+        <programlisting><![CDATA[
+(some #'oddp (list a b))]]>
+        </programlisting>
+        <para>becomes</para>
+        <programlisting><![CDATA[
+(in-if #'oddp a b)]]>
+        </programlisting>
+        <para>
+            Using a combination of <function>cond</function> and
+            <function>in</function>, we can define a useful
+            variant of case. The Common Lisp case macro assumes that its keys
+            are constants. Sometimes we may want the behavior of a case
+            expression, but with keys which are evaluated. For such situations
+            we define &gt;case, like case except that the keys guarding each
+            clause are evaluated before comparison. (The &gt; in the name is
+            intended to suggest the arrow notation used to represent
+            evaluation.) Because &gt;case uses in, it evaluates no more of the
+            keys than it needs to.
+        </para>
+        <para>
+            Since keys can be Lisp expressions, there is no way to tell if
+            <code>(x y)</code>
+            is a call or a list of two keys.
+            To avoid ambiguity, keys
+            (other than t and otherwise) must always be given in a list, even
+            if there is only one of them. In case expressions, nil may not
+            appear as the car of a clause on grounds of ambiguity. In a
+            &gt;case expression, nil is no longer ambiguous as the car of a
+            clause, but it does mean that the rest of the clause will never be
+            evaluated.
+        </para>
+        <para>For clarity, the code that generates the expansion of each
+            &gt;case clause is defined as a separate function,
+            <function>&gt;casex</function>.
+            Notice that <function>&gt;casex</function> itself uses <function>inq</function>.
+        </para>
+        <figure xml:id="simple-iteration-macros">
+            <title>Simple iteration macros.</title>
+            <programlisting><![CDATA[
+(defmacro while (test &body body)
+  `(do ()
+       ((not ,test))
+     ,@body))
+
+(defmacro till (test &body body)
+  `(do ()
+       (,test)
+     ,@body))
+
+(defmacro for ((var start stop) &amp;body body)
+  (let ((gstop (gensym)))
+    `(do ((,var ,start (1+ ,var))
+          (,gstop ,stop))
+         ((> ,var ,gstop))
+       ,@body)))]]>
+        </programlisting>
+        </figure>
+        <!-- <a name="IDX52" id="IDX52"></a> -->
+    </section>
+    <section xml:id="iteration" xreflabel="Iteration">
+        <title>Iteration</title>
+        <para>
+            Sometimes the trouble with functions is not that their arguments
+            are always evaluated, but that they are evaluated only once.
+            Because each argument to a function will be evaluated exactly once,
+            if we want to define an operator which takes some body of
+            expressions and iterates through them, we will have to define it as
+            a macro.
+        </para>
+        <para>
+            The simplest example would be a macro which evaluated its
+            arguments in sequence forever:
+        </para>
+        <programlisting><![CDATA[
+(defmacro forever (&body body)
+  `(do ()
+       (nil)
+     ,@body))]]>
+        </programlisting>
+        <para>
+            This is just what the built-in <function>loop</function>
+            macro does if you give it no
+            loop keywords. It might seem that there is not much future (or too
+            much future) in looping forever. But combined with block and
+            return-from, this kind of macro becomes the most natural way to
+            express loops where termination is always in the nature of an
+            emergency.
+        </para>
+        <para>
+            Some of the simplest macros for iteration are shown in Figure
+            11.7. We have already seen while (page 91), whose body will be
+            evaluated while a test expression returns true. Its converse is
+            till, which does the same while a test expression returns false.
+            Finally for, also seen before (page 129), iterates for a range of
+            numbers.
+        </para>
+        <para>
+            By defining these macros to expand into<function>do</function>s,
+            we enable the use of go and return within their bodies. As
+            <function>do</function> inherits these rights from
+            <function>block</function> and <function>tagbody</function>,
+            <function>while</function>, <function>till</function>, and
+            <function>for</function> inherit them from <function>do</function>.
+            As explained on page 131, the nil tag of the implicit block around
+            do will be captured by the macros defined in
+            <xref linkend="simple-iteration-macros"/>. This is
+            more of a feature than a bug, but it should at least be mentioned
+            explicitly.
+        </para>
+        <para>
+            Macros are indispensable when we need to define more powerful
+            iteration constructs.
+            <xref linkend="macros-for-iteration-by-subsequences"/> contains
+            two generalizations of <function>dolist</function>; both
+            evaluate their body with a tuple of variables bound to
+            successive subsequences of a list. For example, given two
+            parameters, <function>do-tuples/o</function> will iterate by pairs:
+        </para>
+        <programlisting><![CDATA[
+> (do-tuples/o (x y) '(a b c d)
+(princ (list x y)))
+(A B)(B C)(C D)
+NIL]]>
+        </programlisting>
+        <para>
+            Given the same arguments, <function>do-tuples/c</function>
+            will do the same thing, then wrap around to the front of the list:
+        </para>
+        <programlisting><![CDATA[
+> (do-tuples/c (x y) '(a b c d)
+(princ (list x y)))
+(A B)(B C)(C D)(D A)
+NIL]]>
+        </programlisting>
+        <para>
+            Both macros return<constant>nil</constant>, unless an explicit
+            return occurs within the body.
+        </para>
+        <para>
+            This kind of iteration is often needed in programs which deal
+            with some notion of a path. The suffixes /o and /c are intended to
+            suggest that the two versions traverse open and closed paths,
+            respectively. For example, if points is a list of points and
+            <code>(drawline x y)</code> draws the line between <varname>x</varname>
+            and<varname>y</varname>, then to draw the path from the
+            first point to the last we write.
+        </para>
+        <programlisting><![CDATA[
+(do-tuples/o (x y) points (drawline x y))]]>
+        </programlisting>
+        <para>whereas, if points is a list of the vertices of a polygon, to
+            draw its perimeter we write
+        </para>
+        <programlisting><![CDATA[
+(do-tuples/c (x y) points (drawline x y))]]>
+        </programlisting>
+        <para>
+            The list of parameters given as the first argument can be any
+            length, and iteration will proceed by tuples of that length. If
+            just one parameter is given, both degenerate to
+            <function>dolist</function>:
+        </para>
+        <programlisting><![CDATA[
+> (do-tuples/o (x) '(a b c) (princ x))
+ABC
+NIL
+> (do-tuples/c (x) '(a b c) (princ x))
+ABC
+NIL]]>
+        </programlisting>
+        <figure xml:id="macros-for-iteration-by-subsequences">
+            <title>Macros for iteration by subsequences.</title>
+            <programlisting><![CDATA[
+(defmacro do-tuples/o (parms source &body body)
+  (if parms
+      (let ((src (gensym)))
+        `(prog ((,src ,source))
+               (mapc #'(lambda ,parms ,@body)
+                     ,@(map0-n #'(lambda (n)
+                                    `(nthcdr ,n ,src))
+                                (1- (length parms))))))))
+
+(defmacro do-tuples/c (parms source &body body)
+  (if parms
+      (with-gensyms (src rest bodfn)
+                    (let ((len (length parms)))
+                      `(let ((,src ,source))
+                         (when (nthcdr ,(1- len) ,src)
+                           (labels ((,bodfn ,parms ,@body))
+                             (do ((,rest ,src (cdr ,rest)))
+                                 ((not (nthcdr ,(1- len) ,rest))
+                                  ,@(mapcar #'(lambda (args)
+                                                 `(,bodfn ,@args))
+                                             (dt-args len rest src))
+                                  nil)
+                               (,bodfn ,@(map1-n #'(lambda (n)
+                                                      `(nth ,(1- n)
+                                                            ,rest))
+                                                  len))))))))))
+
+(defun dt-args (len rest src)
+  (map0-n #'(lambda (m)
+              (map1-n #'(lambda (n)
+                          (let ((x (+ m n)))
+                            (if (&gt;= x len)
+                                `(nth ,(- x len) ,src)
+                              `(nth ,(1- x) ,rest))))
+                      len))
+          (- len 2)))]]>
+        </programlisting>
+        </figure>
+        <!-- <a name="IDX53" id="IDX53"></a> -->
+        <figure xml:id="expansion-of-a-call-to-do-tuples-c">
+            <title>Expansion of a call to <function>do-tuples/c</function></title>
+            <programlisting><![CDATA[
+(do-tuples/c (x y z) '(a b c d)
+             (princ (list x y z)))]]>
+            </programlisting>
+            <para>expands into:</para>
+            <programlisting><![CDATA[
+(let ((#:g2 '(a b c d)))
+  (when (nthcdr 2 #:g2)
+    (labels ((#:g4 (x y z)
+                   (princ (list x y z))))
+      (do ((#:g3 #:g2 (cdr #:g3)))
+          ((not (nthcdr 2 #:g3))
+           (#:g4 (nth 0 #:g3)
+                 (nth 1 #:g3)
+                 (nth 0 #:g2))
+           (#:g4 (nth 1 #:g3)
+                 (nth 0 #:g2)
+                 (nth 1 #:g2))
+           nil)
+        (#:g4 (nth 0 #:g3)
+              (nth 1 #:g3)
+              (nth 2 #:g3))))))]]>
+        </programlisting></figure>
+        <!-- <a name="IDX54" id="IDX54"></a> -->
+        <para>
+            The definition of <function>do-tuples/c</function>
+            is more complex than that of <function>do-tuples/o</function>,
+            because it has to wrap around on reaching the end of
+            the list. If there are n parameters, <function>do-tuples/c</function>
+            must do n-1 more iterations before returning:
+        </para>
+        <programlisting><![CDATA[
+> (do-tuples/c (x y z) '(a b c d)
+(princ (list x y z)))
+(A B C)(B C D)(C D A)(D A B)
+NIL
+> (do-tuples/c (w x y z) '(a b c d)
+(princ (list w x y z)))
+(A B C D)(B C D A)(C D A B)(D A B C)
+NIL]]>
+        </programlisting>
+        <para>
+            The expansion of the former call to <function>do-tuples/c</function>
+            is shown in <xref linkend="expansion-of-a-call-to-do-tuples-c"/>.
+            The hard part to generate is the sequence of calls
+            representing the wrap around to the front of the list. These calls
+            (in this case, two of them) are generated by <function>dt-args</function>.
+        </para>
+    </section>
+    <section xml:id="iteration-with-multiple-values"
+             xreflabel="Iteration with Multiple Values">
+        <title>Iteration with Multiple Values</title>
+        <para>
+            The built-in <function>do</function>
+            macros have been around longer than multiple
+            return values. Fortunately do can evolve to suit the new situation,
+            because the evolution of Lisp is in the hands of the programmer.
+            <xref linkend="multiple-value-binding-version-of-do*"/> contains a version of
+            <function>do*</function> adapted for multiple values.
+            With <function>mvdo*</function>, each of the initial clauses can bind more than one
+            variable:
+        </para>
+        <programlisting><![CDATA[
+> (mvdo* ((x 1 (1+ x))
+((y z) (values 0 0) (values z x)))
+((> x 5) (list x y z))
+(princ (list x y z)))
+(1 0 0)(2 0 2)(3 2 3)(4 3 4)(5 4 5)
+(6 5 6)]]>
+        </programlisting>
+        <para>
+            This kind of iteration is useful, for example, in interactive
+            graphics programs, which often have to deal with multiple
+            quantities like coordinates and regions.
+        </para>
+        <para>
+            Suppose that we want to write a simple interactive game, in
+            which the object is to avoid being squashed between two pursuing
+            objects. If the two pursuers both hit you at the same time, you
+            lose; if they crash into one another first, you win.
+            <xref linkend="a-game-of-squash"/> shows how the main loop of
+            this game could be written using <function>mvdo*</function>.
+        </para>
+        <para>
+            It is also possible to write an <function>mvdo</function>,
+            which binds its local variables in parallel:
+        </para>
+        <programlisting><![CDATA[
+> (mvdo ((x 1 (1+ x))
+((y z) (values 0 0) (values z x)))
+((> x 5) (list x y z))
+(princ (list x y z)))
+(1 0 0)(2 0 1)(3 1 2)(4 2 3)(5 3 4)
+(6 4 5)]]>
+        </programlisting>
+        <para>
+            The need for <function>psetq</function> in defining do was described on page 96.
+            To define <function>mvdo</function>, we need a multiple-value version of
+            <function>psetq</function>. Since Common Lisp doesn't have one,
+            we have to write it ourselves, as in <xref linkend="multiple-value-version-of-psetq"/>.
+            The new macro works as follows:
+        </para>
+        <programlisting><![CDATA[
+> (let ((w 0) (x 1) (y 2) (z 3))
+(mvpsetq (w x) (values 'a 'b) (y z) (values w x))
+(list w x y z))
+(A B 0 1)]]>
+        </programlisting>
+        <figure xml:id="multiple-value-binding-version-of-do*">
+            <title>Multiple value binding version of <function>do*</function>.</title>
+            <programlisting><![CDATA[
+(defmacro mvdo* (parm-cl test-cl &body body)
+  (mvdo-gen parm-cl parm-cl test-cl body))
+
+(defun mvdo-gen (binds rebinds test body)
+  (if (null binds)
+      (let ((label (gensym)))
+        `(prog nil
+               ,label
+               (if ,(car test)
+                   (return (progn ,@(cdr test))))
+               ,@body
+               ,@(mvdo-rebind-gen rebinds)
+               (go ,label)))
+    (let ((rec (mvdo-gen (cdr binds) rebinds test body)))
+      (let ((var/s (caar binds)) (expr (cadar binds)))
+        (if (atom var/s)
+            `(let ((,var/s ,expr)) ,rec)
+          `(multiple-value-bind ,var/s ,expr ,rec))))))
+
+(defun mvdo-rebind-gen (rebinds)
+  (cond ((null rebinds) nil)
+        ((< (length (car rebinds)) 3)
+         (mvdo-rebind-gen (cdr rebinds)))
+        (t
+         (cons (list (if (atom (caar rebinds))
+                         'setq
+                       'multiple-value-setq)
+                     (caar rebinds)
+                     (third (car rebinds)))
+               (mvdo-rebind-gen (cdr rebinds))))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX55" id="IDX55"></a> -->
+        <para>
+            The definition of mvpsetq relies on three utility functions:
+            <function>mklist</function> (page 45), <function>group</function>
+            (page 47), and <function>shuffle</function>, defined here,
+            which interleaves two lists:
+        </para>
+        <programlisting><![CDATA[
+(mvdo* (((px py) (pos player) (move player mx my))
+        ((x1 y1) (pos obj1) (move obj1 (- px x1)
+                                  (- py y1)))
+        ((x2 y2) (pos obj2) (move obj2 (- px x2)
+                                  (- py y2)))
+        ((mx my) (mouse-vector) (mouse-vector))
+        (win nil (touch obj1 obj2))
+        (lose nil (and (touch obj1 player)
+                       (touch obj2 player))))
+       ((or win lose) (if win 'win 'lose))
+       (clear)
+       (draw obj1)
+       (draw obj2)
+       (draw player))]]>
+        </programlisting>
+        <para>
+            <code>(pos obj)</code> returns two values <code>x,y</code>
+            representing the position of <varname>obj</varname>.
+            Initially, the three objects have random positions.
+        </para>
+        <para>
+            <code>(move obj dx dy)</code> moves the object <varname>obj</varname>
+            depending on its type and the vector <code>#dx,dy#</code>.
+            Returns two values <code>x,y</code> indicating the new
+            position.
+            <code>(mouse-vector)</code> returns two values <code>dx,dy</code>
+            indicating the current movement of the mouse.
+        </para>
+        <para>
+            <code>(touch obj1 obj2)</code> returns true if
+            <varname>obj1</varname> and <varname>obj2</varname> are touching.
+            <code>(clear)</code> clears the game region.
+        </para>
+        <para>
+            <code>(draw obj)</code> draws <varname>obj</varname> at its current position.
+        </para>
+        <!-- TODO(rkashitsyn): add missed picture of game -->
+        <figure xml:id="a-game-of-squash">
+            <title>A game of squash.</title>
+        </figure>
+        <!-- <a name="IDX56" id="IDX56"></a> -->
+        <programlisting><![CDATA[
+> (shuffle '(a b c) '(1 2 3 4))
+(A 1 B 2 C 3 4)]]>
+        </programlisting>
+        <para>
+            With <function>mvpsetq</function>, we can define
+            <function>mvdo</function> as in
+            <xref linkend="multiple-value-binding-version-of-do"/>. Like
+            <function>condlet</function>, this macro uses
+            <function>mappend</function> instead of <function>mapcar</function> to avoid
+            modifying the original macro call. The mappend-mklist idiom
+            flattens a tree by one level:
+        </para>
+        <programlisting><![CDATA[
+> (mappend #'mklist '((a b c) d (e (f g) h) ((i)) j))
+(A B C D E (F G) H (I) J)]]>
+        </programlisting>
+        <figure xml:id="multiple-value-version-of-psetq">
+            <title>Multiple value version of <function>psetq</function>.</title>
+            <programlisting><![CDATA[
+(defmacro mvpsetq (&rest args)
+  (let* ((pairs (group args 2))
+         (syms (mapcar #'(lambda (p)
+                           (mapcar #'(lambda (x) (gensym))
+                                   (mklist (car p))))
+                       pairs)))
+    (labels ((rec (ps ss)
+                  (if (null ps)
+                      `(setq
+                        ,@(mapcan #'(lambda (p s)
+                                       (shuffle (mklist (car p))
+                                                s))
+                                   pairs syms))
+                    (let ((body (rec (cdr ps) (cdr ss))))
+                      (let ((var/s (caar ps))
+                            (expr (cadar ps)))
+                        (if (consp var/s)
+                            `(multiple-value-bind ,(car ss)
+                                 ,expr
+                               ,body)
+                          `(let ((,@(car ss) ,expr))
+                             ,body)))))))
+      (rec pairs syms))))
+
+(defun shuffle (x y)
+  (cond ((null x) y)
+        ((null y) x)
+        (t (list* (car x) (car y)
+                  (shuffle (cdr x) (cdr y))))))]]>
+        </programlisting></figure>
+        <!-- <a name="IDX57" id="IDX57"></a> -->
+        <para>
+            To help in understanding this rather large macro,
+            <xref linkend="expansion-of-a-call-to-mvdo"/> contains
+            a sample expansion.
+        </para>
+    </section>
+    <section xml:id="need-for-macros" xreflabel="Need for Macros">
+        <title>Need for Macros</title>
+        <figure xml:id="multiple-value-binding-version-of-do">
+            <title>Multiple value binding version of <function>do</function>.</title>
+            <programlisting><![CDATA[
+(defmacro mvdo (binds (test &rest result) &body body)
+  (let ((label (gensym))
+        (temps (mapcar #'(lambda (b)
+                           (if (listp (car b))
+                               (mapcar #'(lambda (x)
+                                           (gensym))
+                                       (car b))
+                             (gensym)))
+                       binds)))
+    `(let ,(mappend #'mklist temps)
+       (mvpsetq ,@(mapcan #'(lambda (b var)
+                               (list var (cadr b)))
+                           binds
+                           temps))
+       (prog ,(mapcar #'(lambda (b var) (list b var))
+                      (mappend #'mklist (mapcar #'car binds))
+                      (mappend #'mklist temps))
+             ,label
+             (if ,test
+                 (return (progn ,@result)))
+             ,@body
+             (mvpsetq ,@(mapcan #'(lambda (b)
+                                     (if (third b)
+                                         (list (car b)
+                                               (third b))))
+                                 binds))
+             (go ,label)))))]]>
+        </programlisting></figure>
+        <!-- <a name="IDX58" id="IDX58"></a> -->
+        <para>
+            Macros aren't the only way to protect arguments against
+            evaluation. Another is to wrap them in closures. Conditional and
+            repeated evaluation are similar because neither problem inherently
+            requires macros. For example, we could write a version of if as a
+            function:
+        </para>
+        <programlisting><![CDATA[
+(defun fnif (test then &optional else)
+  (if test
+      (funcall then)
+    (if else (funcall else))))]]>
+        </programlisting>
+        <para>
+            We would protect the then and else arguments by expressing them
+            as closures, so instead of
+        </para>
+        <programlisting><![CDATA[
+(if (rich) (go-sailing) (rob-bank))]]>
+        </programlisting>
+        <para>we would say</para>
+        <programlisting><![CDATA[
+(fnif (rich)
+      #'(lambda () (go-sailing))
+      #'(lambda () (rob-bank)))]]>
+        </programlisting>
+        <figure xml:id="expansion-of-a-call-to-mvdo">
+            <title>Expansion of a call to <function>mvdo</function>.</title>
+            <programlisting><![CDATA[
+(mvdo ((x 1 (1+ x))
+       ((y z) (values 0 0) (values z x)))
+      ((> x 5) (list x y z))
+      (princ (list x y z)))]]>
+        </programlisting>
+        <para>expands into:</para>
+        <programlisting><![CDATA[
+(let (#:g2 #:g3 #:g4)
+  (mvpsetq #:g2 1
+           (#:g3 #:g4) (values 0 0))
+  (prog ((x #:g2) (y #:g3) (z #:g4))
+        #:g1
+        (if (&gt; x 5)
+            (return (progn (list x y z))))
+        (princ (list x y z))
+        (mvpsetq x (1+ x)
+                 (y z) (values z x))
+        (go #:g1)))]]>
+        </programlisting>
+        </figure>
+        <!-- <a name="IDX59" id="IDX59"></a> -->
+        <para>
+            If all we want is conditional evaluation, macros aren't
+            absolutely necessary. They just make programs cleaner. However,
+            macros are necessary when we want to take apart argument forms, or
+            bind variables passed as arguments.
+        </para>
+        <para>
+            The same applies to macros for iteration. Although macros offer
+            the only way to define an iteration construct which can be followed
+            by a body of expressions, it is possible to do iteration with
+            functions, so long as the body of the loop is packaged up in a
+            function itself.
+            <footnote>
+                <para>
+                    It's not impossible to write an iteration function
+                    which doesn't need its argument wrapped up in a function.
+                    We could write a function that called <function>eval</function>
+                    on expressions passed to it as arguments.
+                    For an explanation of why it's usually bad to call
+                    <function>eval</function>, see page 278.
+                </para>
+            </footnote>
+            The built-in function <function>mapc</function>, for
+            example, is the functional counterpart of <function>dolist</function>.
+            The expression
+        </para>
+        <programlisting><![CDATA[
+(dolist (b bananas)
+  (peel b)
+  (eat b))]]>
+        </programlisting>
+        <para>has the same side-effects as</para>
+        <programlisting><![CDATA[
+(mapc #'(lambda (b)
+          (peel b)
+          (eat b))
+      bananas)]]>
+        </programlisting>
+        <para>
+            (though the former returns nil and the latter returns the list
+            bananas). We could likewise implement forever as a function,
+        </para>
+        <programlisting><![CDATA[
+(defun forever (fn)
+  (do ()
+      (nil)
+    (funcall fn)))]]>
+        </programlisting>
+        <para>
+            if we were willing to pass it a closure instead of a body of
+            expressions.
+        </para>
+        <para>
+            However, iteration constructs usually want to do more than just
+            iterate, as forever does: they usually want to do a combination of
+            binding and iteration. With a function, the prospects for binding
+            are limited. If you want to bind variables to successive elements
+            of lists, you can use one of the mapping functions. But if the
+            requirements get much more complicated than that, you'll have to
+            write a macro.
+        </para>
+    </section>
+</chapter>
