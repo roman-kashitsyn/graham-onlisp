@@ -455,8 +455,8 @@ Broken at LAST...]]>
         </para>
         <para>
             Notice that filter uses an accumulator in the same way as the
-            tail-recursive functions described in Section 2.8. Indeed, the aim
-            in writing a tail-recursive function is to have the compiler
+            tail-recursive functions described in Section <xref linkend="tail-recursion"/>.
+            Indeed, the aim in writing a tail-recursive function is to have the compiler
             generate code in the shape of filter. For filter, the
             straightforward iterative definition is simpler than the
             tail-recursive one. The combination of push and nreverse in the
@@ -477,15 +477,16 @@ Broken at LAST...]]>
         </programlisting>
         <para>
             This function is written in a rather convoluted way in order to
-            make it tail-recursive (Section 2.8). The principle of rapid
-            prototyping applies to individual functions as well as to whole
+            make it tail-recursive (Section <xref linkend="tail-recursion"/>).
+            The principle of rapid prototyping applies to individual functions as well as to whole
             programs. When writing a function like flatten, it can be a good
             idea to begin with the simplest possible implementation. Then, once
             the simpler version works, you can replace it if necessary with a
             more efficient tail-recursive or iterative version. If it's short
             enough, the initial version could be left as a comment to describe
             the behavior of its replacement. (Simpler versions of group and
-            several other functions in Figures 4.2 and 4.3 are included in the
+            several other functions in <xref linkend="larger-functions-on-lists"/> and
+            <xref linkend="doubly-recursive-list-utilities"/> are included in the
             note on page 389.)
         </para>
         <para>

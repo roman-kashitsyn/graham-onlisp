@@ -4,7 +4,7 @@ body {
     padding:32px;
     color:black;
     background:white;
-    font:normal 1.0em helvetica,arial,sans-serif;
+    font-family: 'PT Sans', 'Lucida Grande', Verdana, Arial, sans-serif;
     text-align:justify;
 }
 

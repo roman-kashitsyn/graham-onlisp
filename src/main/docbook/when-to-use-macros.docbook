@@ -63,8 +63,8 @@
 (defmacro 1+ (x) `(+ 1 ,x))]]>
         </programlisting>
         <para>
-            But while, from Section 7.3, could only be defined as a
-            macro:
+            But while, from Section <xref linkend="defining-simple-macros"/>,
+            could only be defined as a macro:
         </para>
         <programlisting><![CDATA[
 (defmacro while (test &body body)
@@ -323,8 +323,7 @@
                     <para>
                         However, this is an inconvenience. It doesn't always work,
                         either: even if, like <function>avg</function>, the macro has an
-                        <code>&amp;rest</code>
-                        parameter,
+                        <parameter>&amp;rest</parameter> parameter,
                         there is no way to pass it a varying number of arguments.
                     </para>
                 </listitem>
@@ -353,7 +352,8 @@
                     <para>
                         Recursion. Using recursion in macros is not so simple as it is
                         in functions. Although the expansion function of a macromay be
-                        recursive, the expansion itself may not be. Section 10.4 deals with
+                        recursive, the expansion itself may not be.
+                        Section <xref linkend="recursion"/> deals with
                         the subject of recursion in macros.
                     </para>
                 </listitem>

@@ -1437,8 +1437,10 @@ MAC
             Functions can sometimes be transformed into macros when
             conditions 4, 5 and 6 don't hold. However, these topics are treated
             separately in later chapters. The issue of recursion in macros is
-            covered in Section 10.4, and the dangers of multiple and misordered
-            evaluation in Sections 10.1 and 10.2, respectively.
+            covered in Section <xref linkend="recursion"/>, and the dangers of
+            multiple and misordered evaluation in Sections
+            <xref linkend="number-of-evaluations"/> and
+            <xref linkend="order-of-evaluation"/>, respectively.
         </para>
         <para>
             As for condition 7, it is possible to simulate closures with

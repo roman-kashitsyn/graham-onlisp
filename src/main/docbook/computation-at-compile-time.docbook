@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<chapter version="5.0"
+         xml:lang="en"
+         xml:id="ch13-computation-at-compile-time"
+         xreflabel="Computation at Compile-Time"
+         xmlns="http://docbook.org/ns/docbook"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:xml="http://www.w3.org/XML/1998/namespace"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         xsi:schemaLocation="http://docbook.org/ns/docbook
+                             http://www.docbook.org/xml/5.0/xsd/docbook.xsd
+                             http://www.w3.org/1999/xlink
+                             http://www.docbook.org/xml/5.0/xsd/xlink.xsd
+                             http://www.w3.org/XML/1998/namespace
+                             http://www.docbook.org/xml/5.0/xsd/xml.xsd">
+    <title>Computation at Compile-Time</title>
+    <para>
+        The preceding chapters described several types of operators
+        which have to be implemented by macros. This one describes a class
+        of problems which could be solved by functions, but where macros
+        are more efficient. Section <xref linkend="macro-or-function"/>
+        listed the pros and cons of using
+        macros in a given situation. Among the pros was "computation at
+        compile-time." By defining an operator as a macro, you can
+        sometimes make it do some of its work when it is expanded. This
+        chapter looks at macros which take advantage of this
+        possibility.
+    </para>
+    <section xml:id="sec13-1-new-utilities"
+             xreflabel="New Utilities">
+        <title>New Utilities</title>
+        <para>
+            Section <xref linkend="macro-or-function"/>
+            raised the possibility of using macros to shift
+            computation to compile-time. There we had as an example the macro
+            <function>avg</function>, which returns the average of its arguments:
+        </para>
+        <programlisting><![CDATA[
+> (avg pi 4 5)
+4.047...]]>
+        </programlisting>
+        <para>
+            <xref linkend="fig13-1-shifting-computation-when-finding-averages"/>
+            shows avg defined first as a function and then as a
+            macro. When <function>avg</function> is defined as a macro,
+            the call to length can be made at compile-time.
+            In the macro version we also avoid the expense of manipulating
+            the <parameter>&amp;rest</parameter> parameter at runtime. In many
+            implementations, <function>avg</function>
+            will be faster written as a macro.
+        </para>
+        <para>
+            The kind of savings which comes from knowing the number of
+            arguments at expansion-time can be combined with the kind we get
+            from in (page 152), where it was possible to avoid even evaluating
+            some of the arguments.
+            <xref linkend="fig13-2-shifting-and-avoiding-computation"/>
+            contains two versions of <function>most-of</function>, which
+            returns true if most of its arguments do:
+        </para>
+        <programlisting><![CDATA[
+> (most-of t t t nil)
+T]]>
+        </programlisting>
+        <figure xml:id="fig13-1-shifting-computation-when-finding-averages">
+            <title>Shifting computation when finding averages.</title>
+            <programlisting><![CDATA[
+(defun avg (&rest args)
+  (/ (apply #'+ args) (length args)))
+
+(defmacro avg (&rest args)
+  `(/ (+ ,@args) ,(length args)))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX66" id="IDX66"></a> -->
+        <figure xml:id="fig13-2-shifting-and-avoiding-computation">
+            <title>Shifting and avoiding computation.</title>
+            <programlisting><![CDATA[
+(defun most-of (&rest args)
+  (let ((all 0)
+        (hits 0))
+    (dolist (a args)
+      (incf all)
+      (if a (incf hits)))
+    (> hits (/ all 2))))
+
+(defmacro most-of (&rest args)
+  (let ((need (floor (/ (length args) 2)))
+        (hits (gensym)))
+    `(let ((,hits 0))
+       (or ,@(mapcar #'(lambda (a)
+                          `(and ,a (> (incf ,hits) ,need)))
+                      args)))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX67" id="IDX67"></a> -->
+        <para>
+            The macro version expands into code which, like in, only
+            evaluates as many of the arguments as it needs to. For example,
+            <code>(most-of (a) (b) (c))</code> expands into the equivalent of:
+        </para>
+        <programlisting><![CDATA[
+(let ((count 0))
+  (or (and (a) (> (incf count) 1))
+      (and (b) (> (incf count) 1))
+      (and (c) (> (incf count) 1))))
+]]></programlisting>
+        <para>
+            In the best case, just over half the arguments will be
+            evaluated.
+        </para>
+        <figure xml:id="fig13-3-use-of-arguments-known-at-compile-time">
+            <title>Use of arguments known at compile-time.</title>
+            <programlisting><![CDATA[
+(defun nthmost (n lst)
+  (nth n (sort (copy-list lst) #'>)))
+
+(defmacro nthmost (n lst)
+  (if (and (integerp n) (< n 20))
+      (with-gensyms (glst gi)
+                    (let ((syms (map0-n #'(lambda (x) (gensym)) n)))
+                      `(let ((,glst ,lst))
+                         (unless (< (length ,glst) ,(1+ n))
+                           ,@(gen-start glst syms)
+                           (dolist (,gi ,glst)
+                             ,(nthmost-gen gi syms t))
+                           ,(car (last syms))))))
+    `(nth ,n (sort (copy-list ,lst) #'>))))
+
+(defun gen-start (glst syms)
+  (reverse
+   (maplist #'(lambda (syms)
+                (let ((var (gensym)))
+                  `(let ((,var (pop ,glst)))
+                     ,(nthmost-gen var (reverse syms)))))
+            (reverse syms))))
+
+(defun nthmost-gen (var vars &optional long?)
+  (if (null vars)
+      nil
+    (let ((else (nthmost-gen var (cdr vars) long?)))
+      (if (and (not long?) (null else))
+          `(setq ,(car vars) ,var)
+        `(if (> ,var ,(car vars))
+             (setq ,@(mapcan #'list
+                              (reverse vars)
+                              (cdr (reverse vars)))
+                   ,(car vars) ,var)
+           ,else)))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX68" id="IDX68"></a> -->
+        <para>
+            A macro may also be able to shift computation to compile-time if
+            the values of particular arguments are known.
+            <xref linkend="fig13-3-use-of-arguments-known-at-compile-time"/>
+            contains an example of such a macro. The function <function>nthmost</function>
+            takes a number <parameter>n</parameter> and a list of numbers, and returns the
+            nth largest among them; like other sequence functions, it is zero-indexed:
+        </para>
+        <programlisting><![CDATA[
+> (nthmost 2 '(2 6 1 5 3 4))
+4]]>
+        </programlisting>
+        <para>
+            The function version is written very simply. It sorts the list
+            and calls nth on the result. Since sort is destructive,
+            <function>nthmost</function> copies the list before sorting it.
+            Written thus, <function>nthmost</function> is
+            inefficient is two respects: it conses, and it sorts the entire
+            list of arguments, though all we care about are the top n.
+        </para>
+        <para>
+            If we know n at compile-time, we can approach the problem
+            differently. The rest of the code in
+            <xref linkend="fig13-3-use-of-arguments-known-at-compile-time"/>
+            defines a macro version of <function>nthmost</function>.
+            The first thing this macro does is look at its
+            first argument. If the first argument is not a literal number, it
+            expands into the same code we saw above. If the first argument is a
+            number, we can follow a different course. If you wanted to find,
+            say, the third biggest cookie on a plate, you could do it by
+            looking at each cookie in turn, always keeping in your hand the
+            three biggest found so far. When you have looked at all the
+            cookies, the smallest cookie in your hand is the one you are
+            looking for. If n is a small constant, not proportional to the
+            number of cookies, then this technique gets you a given cookie with
+            less effort that it would take to sort all of them first.
+        </para>
+        <para>T
+            his is the strategy followed when n is known at expansion-time.
+            In its expansion, the macro creates n variables, then calls
+            <function>nthmost-gen</function>
+            to generate the code which has to be evaluated upon
+            looking at each cookie.
+            <xref linkend="fig13-4-expansion-of-nthmost"/>
+            shows a sample macroexpansion. The macro
+            <function>nthmost</function> behaves just like the original function, except
+            that it can't be passed as an argument to apply. The justification
+            for using a macro is purely one of efficiency: the macro version
+            does not cons at runtime, and if n is a small constant, performs
+            fewer comparisons.
+        </para>
+        <para>
+            To have efficient programs, must one then take the trouble to
+            write such huge macros? In this case, probably not. The two
+            versions of <function>nthmost</function>
+            are intended as an example of a general
+            principle: when some arguments are known at compile-time, you can
+            use a macro to generate more efficient code. Whether or not you
+            take advantage of this possibility will depend on how much you
+            stand to gain, and how much more effort it will take to write an
+            efficient macro version. Since the macro version of
+            <function>nthmost</function> is long
+            and complicated, it would only be worth writing in extreme cases.
+            However, information known at compile-time is always a factor worth
+            considering, even if you choose not to take advantage of it.
+        </para>
+        <figure xml:id="fig13-4-expansion-of-nthmost">
+            <title>Expansion of<function>nthmost</function>.
+            </title>
+            <programlisting><![CDATA[
+(nthmost 2 nums)]]>
+            </programlisting>
+            <para>expands into:</para>
+            <programlisting><![CDATA[
+(let ((#:g7 nums))
+  (unless (< (length #:g7) 3)
+    (let ((#:g6 (pop #:g7)))
+      (setq #:g1 #:g6))
+    (let ((#:g5 (pop #:g7)))
+      (if (> #:g5 #:g1)
+          (setq #:g2 #:g1 #:g1 #:g5)
+        (setq #:g2 #:g5)))
+    (let ((#:g4 (pop #:g7)))
+      (if (> #:g4 #:g1)
+          (setq #:g3 #:g2 #:g2 #:g1 #:g1 #:g4)
+        (if (> #:g4 #:g2)
+            (setq #:g3 #:g2 #:g2 #:g4)
+          (setq #:g3 #:g4))))
+    (dolist (#:g8 #:g7)
+      (if (> #:g8 #:g1)
+          (setq #:g3 #:g2 #:g2 #:g1 #:g1 #:g8)
+        (if (> #:g8 #:g2)
+            (setq #:g3 #:g2 #:g2 #:g8)
+          (if (> #:g8 #:g3)
+              (setq #:g3 #:g8)
+            nil))))
+    #:g3))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX69" id="IDX69"></a> -->
+    </section>
+    <section xml:id="13-2-bezier-curves-example"
+             xreflabel="Bezier Curves Example">
+        <title>Bezier Curves Example</title>
+        <para>
+            Like the with- macro (Section <xref linkend="the-with-macro"/>),
+            the macro for computation
+            at compile-time is more likely to be written for a specific
+            application than as a general-purpose utility. How much can a
+            general-purpose utility know at compile-time? The number of
+            arguments it has been given, and perhaps some of their values. If
+            we want to use other constraints, they will probably have to be
+            ones imposed by individual programs.
+        </para>
+        <para>
+            As an example, this section shows how macros can speed up the
+            generation of Bezier curves. Curves must be generated fast if they
+            are being manipulated interactively. It turns out that if the
+            number of segments in the curve is known beforehand, most of the
+            computation can be done at compile-time. By writing our
+            curve-generator as a macro, we can weave precomputed values right
+            into code. This should be even faster than the more usual
+            optimization of storing them in an array.
+        </para>
+        <para>
+            A Bezier curve is defined in terms of four points - two endpoints
+            and two control points. When we are working in two dimensions,
+            these points define parametric equations for the x and y
+            coordinates of points on the curve. If the two endpoints are
+            <inlineequation>
+                <mathphrase>
+                    (x<subscript>0</subscript>, y<subscript>0</subscript>)
+                </mathphrase>
+            </inlineequation> and
+            <inlineequation>
+                <mathphrase>
+                    (x<subscript>3</subscript>, y<subscript>3</subscript>)
+                </mathphrase>
+            </inlineequation>
+            and the two control points are
+            <inlineequation>
+                <mathphrase>
+                    (x<subscript>1</subscript>, y<subscript>1</subscript>)
+                </mathphrase>
+            </inlineequation> and
+            <inlineequation>
+                <mathphrase>
+                    (x<subscript>2</subscript>, y<subscript>2</subscript>)
+                </mathphrase>
+            </inlineequation>,
+            then the equations defining points on the curve
+            are:
+        </para>
+<!--        <programlisting><![CDATA[ -->
+        <informalequation>
+            <mathphrase>
+                x = (x<subscript>3</subscript> - 3x<subscript>2</subscript> +
+                3x<subscript>1</subscript> -
+                x<subscript>0</subscript>)u<superscript>3</superscript> +
+                (3x<subscript>2</subscript> - 6x<subscript>1</subscript> +
+                3x<subscript>0</subscript>)u<superscript>2</superscript> +
+                (3x<subscript>1</subscript> - 3x<subscript>0</subscript>)u
+                + x<subscript>0</subscript>
+            </mathphrase>
+        </informalequation>
+        <informalequation>
+            <mathphrase>
+                y = (y<subscript>3</subscript> - 3y<subscript>2</subscript> +
+                3y<subscript>1</subscript> -
+                y<subscript>0</subscript>)u<superscript>3</superscript> +
+                (3y<subscript>2</subscript> - 6y<subscript>1</subscript> +
+                3y<subscript>0</subscript>)u<superscript>2</superscript> +
+                (3y<subscript>1</subscript> - 3y<subscript>0</subscript>)u
+                + y<subscript>0</subscript>
+            </mathphrase>
+        </informalequation>
+        <!-- </programlisting> -->
+        <para>
+            If we evaluate these equations for n values of u between 0 and
+            1, we get n points on the curve. For example, if we want to draw
+            the curve as 20 segments, then we would evaluate the equations for
+            <inlineequation>
+                <mathphrase>
+                    u = .05, .1, ... , .95
+                </mathphrase>
+            </inlineequation>. There is no need to evaluate them for u of
+            0 or 1, because if
+            <inlineequation><mathphrase>u = 0</mathphrase></inlineequation>
+            they will yield the first endpoint
+            <inlineequation>
+                <mathphrase>
+                    (x<subscript>0</subscript> ,y<subscript>0</subscript>)
+                </mathphrase>
+            </inlineequation>, and if
+            <inlineequation><mathphrase>u = 1</mathphrase></inlineequation>
+            they will yield the second endpoint
+            <inlineequation>
+                <mathphrase>
+                    (x<subscript>3</subscript> , y<subscript>3</subscript>)
+                </mathphrase>
+            </inlineequation>.
+        </para>
+        <para>
+            An obvious optimization is to make n fixed, calculate the powers
+            of u beforehand, and store them in an (n-1) times; 3 array. By
+            defining the curve-generator as a macro, we can do even better. If
+            n is known at expansion-time, the program could simply expand into
+            n line-drawing commands. The precomputed powers of u, instead of
+            being stored in an array, could be inserted as literal values right
+            into the macro expansion.
+        </para>
+        <para>
+            <xref linkend="fig13-5-macro-for-generating-bezier-curves"/>
+            contains a curve-generating macro which implements
+            this strategy. Instead of drawing lines immediately, it dumps the
+            generated points into an array. When a curve is moving
+            interactively, each instance has to be drawn twice: once to show
+            it, and again to erase it before drawing the next. In the meantime,
+            the points have to be saved somewhere.
+        </para>
+        <para>
+            With <inlineequation><mathphrase>n = 20</mathphrase></inlineequation>,
+            <function>genbez</function> expands into 21 <function>setf</function>s.
+            Since the powers of u appear directly in the code, we save the cost
+            of looking them up at
+            runtime, and the cost of computing them at startup. Like the powers
+            of u, the array indices appear as constants in the expansion, so
+            the bounds-checking for the<code>(setf aref)</code>s could also be done at
+            compile-time.
+        </para>
+    </section>
+    <section xml:id="sec13-3-applications"
+             xreflabel="Applications">
+        <title>Applications</title>
+        <para>Later chapters contain several other macros which use
+            information available at compile-time. A good example is if-match
+            (page 242). Pattern-matchers compare two sequences, possibly
+            containing variables, to see if there is some way of assigning
+            values to the variables which will make the two sequences equal.
+            The design of if-match shows that if one of the sequences is known
+            at compile-time, and only that one contains variables, then
+            matching can be done more efficiently. Instead of comparing the two
+            sequences at runtime and consing up lists to hold the variable
+            bindings established in the process, we can have a macro generate
+            code to perform the exact comparisons dictated by the known
+            sequence, and can store the bindings in real Lisp variables.
+        </para>
+        <figure xml:id="fig13-5-macro-for-generating-bezier-curves">
+            <title>Macro for generating Bezier curves.</title>
+            <programlisting><![CDATA[
+(defconstant *segs* 20)
+
+(defconstant *du* (/ 1.0 *segs*))
+
+(defconstant *pts* (make-array (list (1+ *segs*) 2)))
+
+(defmacro genbez (x0 y0 x1 y1 x2 y2 x3 y3)
+  (with-gensyms (gx0 gx1 gy0 gy1 gx3 gy3)
+                `(let ((,gx0 ,x0) (,gy0 ,y0)
+                       (,gx1 ,x1) (,gy1 ,y1)
+                       (,gx3 ,x3) (,gy3 ,y3))
+                   (let ((cx (* (- ,gx1 ,gx0) 3))
+                         (cy (* (- ,gy1 ,gy0) 3))
+                         (px (* (- ,x2 ,gx1) 3))
+                         (py (* (- ,y2 ,gy1) 3)))
+                     (let ((bx (- px cx))
+                           (by (- py cy))
+                           (ax (- ,gx3 px ,gx0))
+                           (ay (- ,gy3 py ,gy0)))
+                       (setf (aref *pts* 0 0) ,gx0
+                             (aref *pts* 0 1) ,gy0)
+                       ,@(map1-n #'(lambda (n)
+                                      (let* ((u (* n *du*))
+                                             (u^2 (* u u))
+                                             (u^3 (expt u 3)))
+                                        `(setf (aref *pts* ,n 0)
+                                               (+ (* ax ,u^3)
+                                                  (* bx ,u^2)
+                                                  (* cx ,u)
+                                                  ,gx0)
+                                               (aref *pts* ,n 1)
+                                               (+ (* ay ,u^3)
+                                                  (* by ,u^2)
+                                                  (* cy ,u)
+                                                  ,gy0))))
+                                  (1- *segs*))
+                       (setf (aref *pts* *segs* 0) ,gx3
+                             (aref *pts* *segs* 1) ,gy3))))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX70" id="IDX70"></a> -->
+        <para>
+            The embedded languages described in Chapters 19-24 also, for
+            the most part, take advantage of information available at
+            compile-time. Since an embedded language is a compiler of sorts,
+            it's only natural that it should use such information. As a general
+            rule, the more elaborate the macro, the more constraints it imposes
+            on its arguments, and the better your chances of using these
+            constraints to generate efficient code.
+        </para>
+    </section>
+</chapter>

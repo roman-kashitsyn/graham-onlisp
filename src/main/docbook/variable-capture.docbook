@@ -13,134 +13,136 @@
                              http://www.docbook.org/xml/5.0/xsd/xlink.xsd
                              http://www.w3.org/XML/1998/namespace
                              http://www.docbook.org/xml/5.0/xsd/xml.xsd">
-<title>Variable Capture</title>
-<para>
-Macros are vulnerable to a problem called variable capture.
-Variable capture occurs when macroexpansion causes a name clash:
-when some symbol ends up referring to a variable from another
-context. Inadvertent variable capture can cause extremely subtle
-bugs. This chapter is about how to foresee and avoid them. However,
-intentional variable capture is a useful programming technique, and
-Chapter 14 is full of macros which rely on it.
-</para>
-<section xml:id="macro-argument-capture"
-	 xreflabel="Macro Argument Capture">
-<title>Macro Argument Capture</title>
-<para>
-A macro vulnerable to unintended variable capture is a macro
-with a bug. To avoid writing such macros, we must know precisely
-when capture can occur. Instances of variable capture can be traced
-to one of two situations: macro argument capture and free symbol
-capture. In argument capture, a symbol passed as an argument in the
-macro call inadvertently refers to a variable established by the
-macro expansion itself. Consider the following definition of the
-macro for, which iterates over a body of expressions like a Pascal
-for loop:
-</para>
-<programlisting><![CDATA[
+    <title>Variable Capture</title>
+    <para>
+        Macros are vulnerable to a problem called variable capture.
+        Variable capture occurs when macroexpansion causes a name clash:
+        when some symbol ends up referring to a variable from another
+        context. Inadvertent variable capture can cause extremely subtle
+        bugs. This chapter is about how to foresee and avoid them. However,
+        intentional variable capture is a useful programming technique, and
+        Chapter 14 is full of macros which rely on it.
+    </para>
+    <section xml:id="macro-argument-capture"
+             xreflabel="Macro Argument Capture">
+        <title>Macro Argument Capture</title>
+        <para>
+            A macro vulnerable to unintended variable capture is a macro
+            with a bug. To avoid writing such macros, we must know precisely
+            when capture can occur. Instances of variable capture can be traced
+            to one of two situations: macro argument capture and free symbol
+            capture. In argument capture, a symbol passed as an argument in the
+            macro call inadvertently refers to a variable established by the
+            macro expansion itself. Consider the following definition of the
+            macro for, which iterates over a body of expressions like a Pascal
+            for loop:
+        </para>
+        <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body) ; wrong
   `(do ((,var ,start (1+ ,var))
         (limit ,stop))
        ((> ,var limit))
      ,@body))
 ]]>
-</programlisting>
-<para>
-This macro looks correct at first sight. It even seems to work fine:
-</para>
-<programlisting><![CDATA[
+        </programlisting>
+        <para>
+            This macro looks correct at first sight. It even seems to work fine:
+        </para>
+        <programlisting><![CDATA[
 > (for (x 1 5)
 (princ x))
 12345
 NIL
 ]]>
-</programlisting>
-<para>
-Indeed, the error is so subtle that we might use this version of
-the macro hundreds of times and have it always work perfectly. Not
-if we call it this way, though:
-</para>
-<programlisting><![CDATA[
+        </programlisting>
+        <para>
+            Indeed, the error is so subtle that we might use this version of
+            the macro hundreds of times and have it always work perfectly. Not
+            if we call it this way, though:
+        </para>
+        <programlisting><![CDATA[
 (for (limit 1 5)
      (princ limit))
 ]]>
-</programlisting>
-<para>
-We might expect this expression to have the same effect as the
-one before. But it doesn't print anything; it generates an error.
-To see why, we look at its expansion:
-</para>
-<programlisting><![CDATA[
+        </programlisting>
+        <para>
+            We might expect this expression to have the same effect as the
+            one before. But it doesn't print anything; it generates an error.
+            To see why, we look at its expansion:
+        </para>
+        <programlisting><![CDATA[
 (do ((limit 1 (1+ limit))
      (limit 5))
     ((> limit limit))
   (princ limit))
 ]]>
-</programlisting>
-s<para>
-Now it's obvious what goes wrong. There is a name clash between
-a symbol local to the macro expansion and a symbol passed as an
-argument to the macro. The macroexpansion captures limit. It ends
-up occurring twice in the same do, which is illegal.
-</para>
-<para>
-Errors caused by variable capture are rare, but what they lack
-in frequency they make up in viciousness. This capture was
-comparatively mild--here, at least, we got an error. More often
-than not, a capturing macro would simply yield incorrect results
-with no indication that anything was wrong. In this case,
-</para>
-<programlisting><![CDATA[
+        </programlisting>
+        s
+        <para>
+            Now it's obvious what goes wrong. There is a name clash between
+            a symbol local to the macro expansion and a symbol passed as an
+            argument to the macro. The macroexpansion captures limit. It ends
+            up occurring twice in the same do, which is illegal.
+        </para>
+        <para>
+            Errors caused by variable capture are rare, but what they lack
+            in frequency they make up in viciousness. This capture was
+            comparatively mild - here, at least, we got an error. More often
+            than not, a capturing macro would simply yield incorrect results
+            with no indication that anything was wrong. In this case,
+        </para>
+        <programlisting><![CDATA[
 > (let ((limit 5))
     (for (i 1 10)
       (when (> i limit)
         (princ i))))
 NIL
 ]]>
-</programlisting>
-<para>the resulting code quietly does nothing.</para>
-</section>
-<section xml:id="free-symbol-capture"
-	 xreflabel="Free Symbol Capture">
-<title>Free Symbol Capture</title>
-<para>Less frequently, the macro definition itself contains a symbol
-which inadvertently refers to a binding in the environment where
-the macro is expanded. Suppose some program, instead of printing
-warnings to the user as they arise, wants to store the warnings in
-a list, to be examined later. One person writes a macro gripe,
-which takes a warning message and adds it to a global list,
-<varname>w</varname>:
-</para>
-<programlisting><![CDATA[
+        </programlisting>
+        <para>the resulting code quietly does nothing.</para>
+    </section>
+    <section xml:id="free-symbol-capture"
+             xreflabel="Free Symbol Capture">
+        <title>Free Symbol Capture</title>
+        <para>
+            Less frequently, the macro definition itself contains a symbol
+            which inadvertently refers to a binding in the environment where
+            the macro is expanded. Suppose some program, instead of printing
+            warnings to the user as they arise, wants to store the warnings in
+            a list, to be examined later. One person writes a macro gripe,
+            which takes a warning message and adds it to a global list,
+            <varname>w</varname>:
+        </para>
+        <programlisting><![CDATA[
 (defvar w nil)
 
 (defmacro gripe (warning)               ; wrong
   `(progn (setq w (nconc w (list ,warning)))
           nil))
 ]]></programlisting>
-<para>
-Someone else then wants to write a function sample-ratio, to
-return the ratio of the lengths of two lists. If either of the
-lists has less than two elements, the function is to return nil
-instead, also issuing a warning that it was called on a
-statistically insignificant case. (Actual warnings could be more
-informative, but their content isn't relevant to this example.)
-</para>
-<programlisting><![CDATA[
+        <para>
+            Someone else then wants to write a function sample-ratio, to
+            return the ratio of the lengths of two lists. If either of the
+            lists has less than two elements, the function is to return nil
+            instead, also issuing a warning that it was called on a
+            statistically insignificant case. (Actual warnings could be more
+            informative, but their content isn't relevant to this example.)
+        </para>
+        <programlisting><![CDATA[
 (defun sample-ratio (v w)
   (let ((vn (length v)) (wn (length w)))
     (if (or (< vn 2) (< wn 2))
         (gripe "sample < 2")
       (/ vn wn))))
 ]]></programlisting>
-<para>
-If <function>sample-ratio</function> is called with
-<code>w = (b)</code>, then it will want to
-warn that one of its arguments, with only one element, is
-statistically insignificant. But when the call to gripe is
-expanded, it will be as if sample-ratio had been defined:
-</para>
-<programlisting><![CDATA[
+        <para>
+            If <function>sample-ratio</function> is called with
+            <code>w = (b)</code>, then it will want to
+            warn that one of its arguments, with only one element, is
+            statistically insignificant. But when the call to gripe is
+            expanded, it will be as if sample-ratio had been defined:
+        </para>
+        <programlisting><![CDATA[
 (defun sample-ratio (v w)
   (let ((vn (length v)) (wn (length w)))
     (if (or (< vn 2) (< wn 2))
@@ -148,17 +150,17 @@ expanded, it will be as if sample-ratio had been defined:
                nil)
       (/ vn wn))))
 ]]>
-</programlisting>
-<para>
-The problem here is that gripe is used in a context where
-<varname>w</varname> has its own local binding. The warning, instead of
-being saved in the global warning list, will be nconced onto the end
-of one of the parameters of <function>sample-ratio</function>.  Not
-only is the warning lost, but the list <code>(b)</code>, which is
-probably used as data elsewhere in the program, will have an
-extraneous string appended to it:
-</para>
-<programlisting><![CDATA[
+        </programlisting>
+        <para>
+            The problem here is that gripe is used in a context where
+            <varname>w</varname> has its own local binding. The warning, instead of
+            being saved in the global warning list, will be nconced onto the end
+            of one of the parameters of <function>sample-ratio</function>. Not
+            only is the warning lost, but the list <code>(b)</code>, which is
+            probably used as data elsewhere in the program, will have an
+            extraneous string appended to it:
+        </para>
+        <programlisting><![CDATA[
 > (let ((lst '(b)))
 (sample-ratio nil lst)
 lst)
@@ -166,90 +168,101 @@ lst)
 > w
 NIL
 ]]>
-</programlisting>
-</section>
-<section xml:id="when-capture-occurs"
-	 xreflabel="When Capture Occurs">
-<title>When Capture Occurs</title>
-<para>
-It's asking a lot of the macro writer to be able to look at a
-macro definition and foresee all the possible problems arising from
-these two types of capture. Variable capture is a subtle matter,
-and it takes some experience to anticipate all the ways a
-capturable symbol could wreak mischief in a program. Fortunately,
-you can detect and eliminate capturable symbols in your macro
-definitions without having to think about how their capture could
-send your program awry. This section provides a straightforward
-rule for detecting capturable symbols. The remaining sections of
-this chapter explain techniques for eliminating them.
-</para>
-<para>
-The rule for defining a capturable variable depends on some
-subordinate concepts, which must be defined first:
-</para>
-<para>
-Free: A symbol s occurs free in an expression when it is used as
-a variable in that expression, but the expression does not create a
-binding for it. In the following expression,
-</para>
-<programlisting><![CDATA[
+        </programlisting>
+    </section>
+    <section xml:id="when-capture-occurs"
+             xreflabel="When Capture Occurs">
+        <title>When Capture Occurs</title>
+        <para>
+            It's asking a lot of the macro writer to be able to look at a
+            macro definition and foresee all the possible problems arising from
+            these two types of capture. Variable capture is a subtle matter,
+            and it takes some experience to anticipate all the ways a
+            capturable symbol could wreak mischief in a program. Fortunately,
+            you can detect and eliminate capturable symbols in your macro
+            definitions without having to think about how their capture could
+            send your program awry. This section provides a straightforward
+            rule for detecting capturable symbols. The remaining sections of
+            this chapter explain techniques for eliminating them.
+        </para>
+        <para>
+            The rule for defining a capturable variable depends on some
+            subordinate concepts, which must be defined first:
+        </para>
+        <para>
+            Free: A symbol s occurs free in an expression when it is used as
+            a variable in that expression, but the expression does not create a
+            binding for it. In the following expression,
+        </para>
+        <programlisting><![CDATA[
 (let ((x y) (z 10))
-  (list w x z))
-]]>
-</programlisting>
-<para>
-w, x and z all occur free within the list expression, which
-establishes no bindings. However, the enclosing let expression
-establishes bindings for x and z, so within the let as a whole,
-only y and w occur free. Note that in</para>
-<programlisting><![CDATA[
+  (list w x z))]]>
+        </programlisting>
+        <para>
+            w, x and z all occur free within the list expression, which
+            establishes no bindings. However, the enclosing let expression
+            establishes bindings for x and z, so within the let as a whole,
+            only y and w occur free. Note that in
+        </para>
+        <programlisting><![CDATA[
 (let ((x x))
-  x)
-]]></programlisting>
-<para>the second instance of x is free--it's not within the scope of
-the new binding being established for x. Skeleton: The skeleton of
-a macro expansion is the whole expansion, minus anything which was
-part of an argument in the macro call. If foo is defined:</para>
-<programlisting><![CDATA[
+  x)]]>
+        </programlisting>
+        <para>the second instance of x is free - it's not within the scope of
+            the new binding being established for x. Skeleton: The skeleton of
+            a macro expansion is the whole expansion, minus anything which was
+            part of an argument in the macro call. If foo is defined:
+        </para>
+        <programlisting><![CDATA[
 (defmacro foo (x y)
-  `(/ (+ ,x 1) ,y))
-]]></programlisting>
-<para>and called thus:</para>
-<programlisting><![CDATA[
-(foo (- 5 2) 6)
-]]></programlisting>
-<para>then it yields the macro expansion:</para>
-<programlisting><![CDATA[
-(/ (+ (- 5 2) 1) 6)
-]]></programlisting>
-<para>The skeleton of this expansion is the above expression with
-holes where the parameters x and y got inserted:</para>
-<programlisting><![CDATA[
-(/ (+ 1) )
-]]></programlisting>
-<para>With these two concepts defined, it's possible to state a
-concise rule for detecting capturable symbols:</para>
-<para>Capturable: A symbol is capturable in some macro expansion if
-(a) it occurs free in the skeleton of the macro expansion, or (b)
-it is bound by a part of the skeleton in which arguments passed to
-the macro are either bound or evaluated. Some examples will show
-the implications of this rule. In the simplest case:</para>
-<programlisting><![CDATA[
+  `(/ (+ ,x 1) ,y))]]>
+        </programlisting>
+        <para>and called thus:</para>
+        <programlisting><![CDATA[
+(foo (- 5 2) 6)]]>
+        </programlisting>
+        <para>then it yields the macro expansion:</para>
+        <programlisting><![CDATA[
+(/ (+ (- 5 2) 1) 6)]]>
+        </programlisting>
+        <para>The skeleton of this expansion is the above expression with
+            holes where the parameters x and y got inserted:
+        </para>
+        <programlisting><![CDATA[
+(/ (+ 1) )]]>
+        </programlisting>
+        <para>
+            With these two concepts defined, it's possible to state a
+            concise rule for detecting capturable symbols:
+        </para>
+        <para>
+            Capturable: A symbol is capturable in some macro expansion if
+            (a) it occurs free in the skeleton of the macro expansion, or (b)
+            it is bound by a part of the skeleton in which arguments passed to
+            the macro are either bound or evaluated. Some examples will show
+            the implications of this rule. In the simplest case:
+        </para>
+        <programlisting><![CDATA[
 (defmacro cap1 ()
-  '(+ x 1))
-]]></programlisting>
-<para>x is capturable because it will occur free in the skeleton.
-That's what caused the bug in gripe. In this macro:</para>
-<programlisting><![CDATA[
+  '(+ x 1))]]>
+        </programlisting>
+        <para>
+            <symbol>x</symbol> is capturable because it will occur free in the skeleton.
+            That's what caused the bug in gripe. In this macro:
+        </para>
+        <programlisting><![CDATA[
 (defmacro cap2 (var)
   `(let ((x ...)
          (,var ...))
-     ...))
-]]></programlisting>
-<para>x is capturable because it is bound in an expression where an
-argument to the macro call will also be bound. (That's what went
-wrong in for.) Likewise for the following two macros</para>
-<programlisting><![CDATA[
+     ...))]]>
+        </programlisting>
+        <para>
+            <symbol>x</symbol>
+            is capturable because it is bound in an expression where an
+            argument to the macro call will also be bound. (That's what went
+            wrong in for.) Likewise for the following two macros
+        </para>
+        <programlisting><![CDATA[
 (defmacro cap3 (var)
   `(let ((x ...))
      (let ((,var ...))
@@ -258,352 +271,410 @@ wrong in for.) Likewise for the following two macros</para>
 (defmacro cap4 (var)
   `(let ((,var ...))
      (let ((x ...))
-       ...)))
-]]></programlisting>
-<para>in both of which x is capturable. However, if there is no
-context in which the binding of x and the variable passed as an
-argument will both be visible, as in</para>
-<programlisting><![CDATA[
+       ...)))]]>
+        </programlisting>
+        <para>
+            in both of which <symbol>x</symbol> is capturable. However, if there is no
+            context in which the binding of x and the variable passed as an
+            argument will both be visible, as in
+        </para>
+        <programlisting><![CDATA[
 (defmacro safe1 (var)
   `(progn (let ((x 1))
             (print x))
           (let ((,var 1))
             (print ,var))))
 ]]></programlisting>
-<para>then x won't be capturable. Not all variables bound by the
-skeleton are at risk. However, if arguments to the macro call are
-evaluated within a binding established by the skeleton,</para>
-<programlisting><![CDATA[
+        <para>
+            then <symbol>x</symbol> won't be capturable. Not all variables bound by the
+            skeleton are at risk. However, if arguments to the macro call are
+            evaluated within a binding established by the skeleton,
+        </para>
+        <programlisting><![CDATA[
 (defmacro cap5 (&body body)
   `(let ((x ...))
-     ,@body))
-]]></programlisting>
-<para>then variables so bound are at risk of capture: in cap5, x is
-capturable. In this case, though,</para>
-<programlisting><![CDATA[
+     ,@body))]]>
+        </programlisting>
+        <para>then variables so bound are at risk of capture: in cap5, x is
+            capturable. In this case, though,
+        </para>
+        <programlisting><![CDATA[
 (defmacro safe2 (expr)
   `(let ((x ,expr))
      (cons x 1)))
 ]]></programlisting>
-<para>x is not capturable, because when the argument passed to expr is
-evaluated, the new binding of x won't be visible. Note also that
-it's only the binding of skeletal variables we have to worry about.
-In this macro</para>
-<programlisting><![CDATA[
+        <para>
+            <symbol>x</symbol>
+            is not capturable, because when the argument passed to expr is
+            evaluated, the new binding of <symbol>x</symbol>
+            won't be visible. Note also that
+            it's only the binding of skeletal variables we have to worry about.
+            In this macro
+        </para>
+        <programlisting><![CDATA[
 (defmacro safe3 (var &body body)
   `(let ((,var ...))
-     ,@body))
-]]></programlisting>
-<para>no symbol is at risk of inadvertent capture (assuming that the
-user expects that the first argument will be bound).</para>
-<para>Now let's look at the original definition of for in light of the
-new rule for identifying capturable symbols:</para>
-<programlisting><![CDATA[
+     ,@body))]]>
+        </programlisting>
+        <para>no symbol is at risk of inadvertent capture (assuming that the
+            user expects that the first argument will be bound).
+        </para>
+        <para>
+            Now let's look at the original definition of for in light of the
+            new rule for identifying capturable symbols:
+        </para>
+        <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body) ; wrong
   `(do ((,var ,start (1+ ,var))
         (limit ,stop))
        ((> ,var limit))
-     ,@body))
-]]></programlisting>
-<para>It turns out now that this definition of for is vulnerable to
-capture in two ways: limit could be passed as the first argument to
-for, as in the original example:</para>
-<programlisting><![CDATA[
+     ,@body))]]>
+        </programlisting>
+        <para>
+            It turns out now that this definition of for is vulnerable to
+            capture in two ways: limit could be passed as the first argument to
+            for, as in the original example:
+        </para>
+        <programlisting><![CDATA[
 (for (limit 1 5)
-     (princ limit))
-]]></programlisting>
-<para>but it's just as dangerous if limit occurs in the body of the
-loop:</para>
-<programlisting><![CDATA[
+     (princ limit))]]>
+        </programlisting>
+        <para>but it's just as dangerous if limit occurs in the body of the
+            loop:
+        </para>
+        <programlisting><![CDATA[
 (let ((limit 0))
   (for (x 1 10)
        (incf limit x))
-  limit)
-]]></programlisting>
-<para>Someone using for in this way would be expecting his own binding
-of limit to be the one incremented in the loop, and the expression
-as a whole to return 55; in fact, only the binding of limit
-generated by the skeleton of the expansion will be incremented:</para>
-<programlisting><![CDATA[
+  limit)]]>
+        </programlisting>
+        <para>
+            Someone using for in this way would be expecting his own binding
+            of limit to be the one incremented in the loop, and the expression
+            as a whole to return 55; in fact, only the binding of limit
+            generated by the skeleton of the expansion will be incremented:
+        </para>
+        <programlisting><![CDATA[
 (do ((x 1 (1+ x))
      (limit 10))
     ((> x limit))
-  (incf limit x))
-]]></programlisting>
-<para>and since that's the one which controls iteration, the loop
-won't even terminate.</para>
-<para>The rules presented in this section should be used with the
-reservation that they are intended only as a guide. They are not
-even formally stated, let alone formally correct. The problem of
-capture is a vaguely defined one, since it depends on expectations.
-For example, in an expression like</para>
-<programlisting><![CDATA[
-(let ((x 1)) (list x))
-]]></programlisting>
-<para>we don't regard it as an error that when (list x) is evaluated,
-x will refer to a new variable. That's what let is supposed to do.
-The rules for detecting capture are also imprecise. You could write
-macros which passed these tests, and which still would be
-vulnerable to unintended capture. For example,</para>
-<programlisting><![CDATA[
+  (incf limit x))]]>
+        </programlisting>
+        <para>and since that's the one which controls iteration, the loop
+            won't even terminate.
+        </para>
+        <para>
+            The rules presented in this section should be used with the
+            reservation that they are intended only as a guide. They are not
+            even formally stated, let alone formally correct. The problem of
+            capture is a vaguely defined one, since it depends on expectations.
+            For example, in an expression like
+        </para>
+        <programlisting><![CDATA[
+(let ((x 1)) (list x))]]>
+        </programlisting>
+        <para>we don't regard it as an error that when <code>(list x)</code> is evaluated,
+            <symbol>x</symbol> will refer to a new variable. That's what let is supposed to do.
+            The rules for detecting capture are also imprecise. You could write
+            macros which passed these tests, and which still would be
+            vulnerable to unintended capture. For example,
+        </para>
+        <programlisting><![CDATA[
 (defmacro pathological (&body body)    ; wrong
   (let* ((syms (remove-if (complement #'symbolp)
                           (flatten body)))
          (var (nth (random (length syms))
                    syms)))
     `(let ((,var 99))
-       ,@body)))
-]]></programlisting>
-<para>When this macro is called, the expressions in the body will be
-evaluated as if in a progn--but one random variable within the body
-may have a different value. This is clearly capture, but it passes
-our tests, because the variable does not occur in the skeleton. In
-practice, though, the rules will work nearly all the time: one
-rarely (if ever) wants to write a macro like the example above.</para>
-<figure xml:id="avoiding-capture-with-let">
-<title>Avoiding capture with let.</title>
-<para>Vulnerable to capture:</para>
-<programlisting><![CDATA[
+       ,@body)))]]>
+        </programlisting>
+        <para>
+            When this macro is called, the expressions in the body will be
+            evaluated as if in a <function>progn</function> - but one random
+            variable within the body
+            may have a different value. This is clearly capture, but it passes
+            our tests, because the variable does not occur in the skeleton. In
+            practice, though, the rules will work nearly all the time: one
+            rarely (if ever) wants to write a macro like the example above.
+        </para>
+        <figure xml:id="avoiding-capture-with-let">
+            <title>Avoiding capture with let.</title>
+            <para>Vulnerable to capture:</para>
+            <programlisting><![CDATA[
 (defmacro before (x y seq)
   `(let ((seq ,seq))
      (< (position ,x seq)
-        (position ,y seq))))
-]]></programlisting>
-<para>A correct version:</para>
-<programlisting><![CDATA[
+        (position ,y seq))))]]>
+            </programlisting>
+            <para>
+                A correct version:
+            </para>
+            <programlisting><![CDATA[
 (defmacro before (x y seq)
   `(let ((xval ,x) (yval ,y) (seq ,seq))
      (< (position xval seq)
-        (position yval seq))))
-]]></programlisting>
-</figure>
-<!-- <a name="IDX39" id="IDX39"></a> -->
-</section>
-<section xml:id="avoiding-capture-with-better-names"
-	 xreflabel="Avoiding Capture with Better Names">
-<title>Avoiding Capture with Better Names</title>
-<para>
-The first two sections divided instances of variable capture
-into two types: argument capture, where a symbol used in an
-argument is caught by a binding established by the macro skeleton,
-and free symbol capture, where a free symbol in a macroexpansion is
-caught by a binding in force where the macro is expanded. The
-latter cases are usually dealt with simply by giving global
-variables distinguished names. In Common Lisp, it is traditional to
-give global variables names which begin and end with asterisks. The
-variable defining the current package is called *package*, for
-example. (Such a name may be pronounced "star-package-star" to
-emphasize that it is not an ordinary variable.)
-</para>
-<para>
-So really it was the responsibility of the author of gripe to
-store warnings in a variable called something like *warnings*,
-rather than just w. If the author of sample-ratio had used
-*warnings* as a parameter, then he would deserve every bug he got,
-but he can't be blamed for thinking that it would be safe to call a
-parameter w.
-</para>
-</section>
-<section xml:id="avoiding-capture-by-prior-evaluation"
-	 xreflabel="Avoiding Capture by Prior Evaluation">
-<title>Avoiding Capture by Prior Evaluation</title>
-<para>
-Sometimes argument capture can be cured simply by evaluating the
-endangered arguments outside of any bindings created by the
-macroexpansion. The simplest cases can be handled by beginning the
-macro with a let expression.
-<xref linkend="avoiding-capture-with-let"/> contains two versions of
-the macro before, which takes two objects and a sequence, and returns
-true iff the first object occurs before the second in the sequence.
-<footnote>
-<para>
-This macro is used only as an example. Really it should neither
-be implemented as a macro, nor use the inefficient algorithm that it
-does. For a proper definition, see page 50.
-</para>
-</footnote>
-The first definition is incorrect. Its
-initial let ensures that the form passed as seq is only evaluated
-once, but it is not sufficient to avoid the following problem:</para>
-<programlisting><![CDATA[
+        (position yval seq))))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX39" id="IDX39"></a> -->
+    </section>
+    <section xml:id="avoiding-capture-with-better-names"
+             xreflabel="Avoiding Capture with Better Names">
+        <title>Avoiding Capture with Better Names</title>
+        <para>
+            The first two sections divided instances of variable capture
+            into two types: argument capture, where a symbol used in an
+            argument is caught by a binding established by the macro skeleton,
+            and free symbol capture, where a free symbol in a macroexpansion is
+            caught by a binding in force where the macro is expanded. The
+            latter cases are usually dealt with simply by giving global
+            variables distinguished names. In Common Lisp, it is traditional to
+            give global variables names which begin and end with asterisks. The
+            variable defining the current package is called <varname>*package*</varname>, for
+            example. (Such a name may be pronounced "star-package-star" to
+            emphasize that it is not an ordinary variable.)
+        </para>
+        <para>
+            So really it was the responsibility of the author of gripe to
+            store warnings in a variable called something like <varname>*warnings*</varname>,
+            rather than just <varname>w</varname>. If the author of sample-ratio had used
+            <varname>*warnings*</varname> as a parameter, then he would deserve every bug he got,
+            but he can't be blamed for thinking that it would be safe to call a
+            parameter <varname>w</varname>.
+        </para>
+    </section>
+    <section xml:id="avoiding-capture-by-prior-evaluation"
+             xreflabel="Avoiding Capture by Prior Evaluation">
+        <title>Avoiding Capture by Prior Evaluation</title>
+        <para>
+            Sometimes argument capture can be cured simply by evaluating the
+            endangered arguments outside of any bindings created by the
+            macroexpansion. The simplest cases can be handled by beginning the
+            macro with a let expression.
+            <xref linkend="avoiding-capture-with-let"/>
+            contains two versions of
+            the macro before, which takes two objects and a sequence, and returns
+            true iff the first object occurs before the second in the sequence.<footnote>
+                <para>
+                    This macro is used only as an example. Really it should neither
+                    be implemented as a macro, nor use the inefficient algorithm that it
+                    does. For a proper definition, see page 50.
+                </para>
+            </footnote>
+            The first definition is incorrect. Its
+            initial let ensures that the form passed as seq is only evaluated
+            once, but it is not sufficient to avoid the following problem:
+        </para>
+        <programlisting><![CDATA[
 > (before (progn (setq seq '(b a)) 'a)
 'b
 '(a b))
-NIL
-]]>
-</programlisting>
-<para>
-This amounts to asking "Is a before b in (a b)?" If before were
-correct, it would return true. Macroexpansion shows what really
-happens: the evaluation of the first argument to &lt; rearranges
-the list to be searched in the second.
-</para>
-<programlisting><![CDATA[
+NIL]]>
+        </programlisting>
+        <para>
+            This amounts to asking "Is a before b in (a b)?" If before were
+            correct, it would return true. Macroexpansion shows what really
+            happens: the evaluation of the first argument to &lt; rearranges
+            the list to be searched in the second.
+        </para>
+        <programlisting><![CDATA[
 (let ((seq '(a b)))
   (< (position (progn (setq seq '(b a)) 'a)
                seq)
-     (position 'b seq)))
-]]>
-</programlisting>
-<para>
-To avoid this problem, it will suffice to evaluate all the
-arguments first in one big let.
-The second definition in <xref linkend="avoiding-capture-with-let"/>
-is thus safe from capture.
-</para>
-<para>
-Unfortunately, the let technique works only in a narrow range of
-cases: macros where</para>
-<orderedlist>
-<listitem>
-<para>all the arguments at risk of capture are evaluated exactly once,
-and</para>
-</listitem>
-<listitem>
-<para>none of the arguments need to be evaluated in the scope of
-bindings established by the macro skeleton.
-</para>
-</listitem>
-</orderedlist>
-<para>This rules out a great many macros. The proposed for macro
-violates both conditions. However, we can use a variation of this
-scheme to make macros like for safe from capture: to wrap its body
-forms within a lambda-expression outside of any locally created
-bindings.</para>
-<para>Some macros, including those for iteration, yield expansions
-where expressions appearing in the macro call will be evaluated
-within newly established bindings. In the definition of for, for
-example, the body of the loop must be evaluated within a do created
-by the macro. Variables occurring in the body of the loop are thus
-vulnerable to capture by bindings established by the do. We can
-protect variables in the body from such capture by wrapping the
-body in a closure, and, within the loop, instead of inserting the
-expressions themselves, simply funcalling the closure.</para>
-<figure xml:id="avoiding-capture-with-a-closure">
-<title>Avoiding capture with a closure.</title>
-<para>Vulnerable to capture:</para>
-<programlisting><![CDATA[
+     (position 'b seq)))]]>
+        </programlisting>
+        <para>
+            To avoid this problem, it will suffice to evaluate all the
+            arguments first in one big let.
+            The second definition in
+            <xref linkend="avoiding-capture-with-let"/>
+            is thus safe from capture.
+        </para>
+        <para>
+            Unfortunately, the let technique works only in a narrow range of
+            cases: macros where
+        </para>
+        <orderedlist>
+            <listitem>
+                <para>
+                    all the arguments at risk of capture are evaluated exactly once, and
+                </para>
+            </listitem>
+            <listitem>
+                <para>
+                    none of the arguments need to be evaluated in the scope of
+                    bindings established by the macro skeleton.
+                </para>
+            </listitem>
+        </orderedlist>
+        <para>
+            This rules out a great many macros. The proposed for macro
+            violates both conditions. However, we can use a variation of this
+            scheme to make macros like for safe from capture: to wrap its body
+            forms within a lambda-expression outside of any locally created
+            bindings.
+        </para>
+        <para>
+            Some macros, including those for iteration, yield expansions
+            where expressions appearing in the macro call will be evaluated
+            within newly established bindings. In the definition of for, for
+            example, the body of the loop must be evaluated within a do created
+            by the macro. Variables occurring in the body of the loop are thus
+            vulnerable to capture by bindings established by the do. We can
+            protect variables in the body from such capture by wrapping the
+            body in a closure, and, within the loop, instead of inserting the
+            expressions themselves, simply funcalling the closure.
+        </para>
+        <figure xml:id="avoiding-capture-with-a-closure">
+            <title>Avoiding capture with a closure.</title>
+            <para>Vulnerable to capture:</para>
+            <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body)
   `(do ((,var ,start (1+ ,var))
         (limit ,stop))
        ((> ,var limit))
-     ,@body))
-]]></programlisting>
-<para>A correct version:</para>
-<programlisting><![CDATA[
+     ,@body))]]>
+            </programlisting>
+            <para>
+                A correct version:
+            </para>
+            <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body)
   `(do ((b #'(lambda (,var) ,@body))
         (count ,start (1+ count))
         (limit ,stop))
        ((> count limit))
-     (funcall b count)))
-]]></programlisting>
-</figure>
-<!-- <a name="IDX40" id="IDX40"></a> -->
-<para>
-<xref linkend="avoiding-capture-with-a-closure"/>
-shows a version of for which uses this technique.
-Since the closure is the first thing made by the expansion of a
-for, free symbols occurring in the body will all refer to variables
-in the environment of the macro call. Now the do communicates with
-its body through the parameters of the closure. All the closure
-needs to know from the do is the number of the current iteration,
-so it has only one parameter, the symbol specified as the index
-variable in the macro call.</para>
-<para>The technique of wrapping expressions in lambdas is not a
-universal remedy. You can use it to protect a body of code, but
-closures won't be any use when, for example, there is a risk of the
-same variable being bound twice by the same let or do (as in our
-original broken for). Fortunately, in this case, by rewriting for
-to package its body in a closure, we also eliminated the need for
-the do to establish bindings for the var argument. The var argument
-of the old for became the parameter of the closure and could be
-replaced in the do by an actual symbol, count. So the new
-definition of for is completely immune from capture, as the test in
-Section 9.3 will show.</para>
-<para>The disadvantage of using closures is that they might be less
-efficient. We could be introducing another function call.
-Potentially worse, if the compiler doesn't give the closure dynamic
-extent, space for it will have to be allocated in the heap at
-runtime.</para>
-</section>
-<section xml:id="avoiding-capture-with-gensyms"
-	 xreflabel="Avoiding Capture with Gensyms">
-<title>Avoiding Capture with Gensyms</title>
-<para>There is one certain way to avoid macro argument capture:
-replacing capturable symbols with gensyms. In the original version
-of for, problems arise when two symbols inadvertently have the same
-name. If we want to avoid the possibility that a macro skeleton
-will contain a symbol also used by the calling code, we might hope
-to get away with using only strangely named symbols in macro
-definitions:</para>
-<programlisting><![CDATA[
+     (funcall b count)))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX40" id="IDX40"></a> -->
+        <para>
+            <xref linkend="avoiding-capture-with-a-closure"/>
+            shows a version of for which uses this technique.
+            Since the closure is the first thing made by the expansion of a
+            for, free symbols occurring in the body will all refer to variables
+            in the environment of the macro call. Now the do communicates with
+            its body through the parameters of the closure. All the closure
+            needs to know from the do is the number of the current iteration,
+            so it has only one parameter, the symbol specified as the index
+            variable in the macro call.
+        </para>
+        <para>
+            The technique of wrapping expressions in lambdas is not a
+            universal remedy. You can use it to protect a body of code, but
+            closures won't be any use when, for example, there is a risk of the
+            same variable being bound twice by the same let or do (as in our
+            original broken for). Fortunately, in this case, by rewriting for
+            to package its body in a closure, we also eliminated the need for
+            the do to establish bindings for the var argument. The var argument
+            of the old for became the parameter of the closure and could be
+            replaced in the do by an actual symbol, count. So the new
+            definition of for is completely immune from capture, as the test in
+            Section
+            <xref linkend="when-capture-occurs"/>
+            will show.
+        </para>
+        <para>
+            The disadvantage of using closures is that they might be less
+            efficient. We could be introducing another function call.
+            Potentially worse, if the compiler doesn't give the closure dynamic
+            extent, space for it will have to be allocated in the heap at
+            runtime.
+        </para>
+    </section>
+    <section xml:id="avoiding-capture-with-gensyms"
+             xreflabel="Avoiding Capture with Gensyms">
+        <title>Avoiding Capture with Gensyms</title>
+        <para>
+            There is one certain way to avoid macro argument capture:
+            replacing capturable symbols with gensyms. In the original version
+            of for, problems arise when two symbols inadvertently have the same
+            name. If we want to avoid the possibility that a macro skeleton
+            will contain a symbol also used by the calling code, we might hope
+            to get away with using only strangely named symbols in macro
+            definitions:
+        </para>
+        <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body) ; wrong
   `(do ((,var ,start (1+ ,var))
         (xsf2jsh ,stop))
        ((> ,var xsf2jsh))
-     ,@body))
-]]></programlisting>
-<para>but this is no solution. It doesn't eliminate the bug, just
-makes it less likely to show. And not so very less likely at
-that--it's still possible to imagine conflicts arising in nested
-instances of the same macro.</para>
-<para>We need some way to ensure that a symbol is unique. The Common
-Lisp function gensym exists just for this purpose. It returns a
-symbol, called a gensym, which is guaranteed not to be eq to any
-symbol either typed in or constructed by a program.</para>
-<para>How can Lisp promise this? In Common Lisp, each package keeps a
-list of all the symbols known in that package. (For an introduction
-to packages, see page 381.) A symbol which is on the list is said
-to be interned in the package. Each call to gensym returns a
-unique, uninterned symbol. And since every symbol seen by read gets
-interned, no one could type anything identical to a gensym. Thus,
-if you begin the expression</para>
-<programlisting><![CDATA[
-(eq (gensym) ...
-]]></programlisting>
-<para>there is no way to complete it that will cause it to return
-true.</para>
-<para>Asking gensym to make you a symbol is like taking the approach
-of choosing a strangely named symbol one step further--gensym will
-give you a symbol whose name isn't even in the phone book. When
-Lisp has to display a gensym,</para>
-<programlisting><![CDATA[
+     ,@body))]]>
+        </programlisting>
+        <para>but this is no solution. It doesn't eliminate the bug, just
+            makes it less likely to show. And not so very less likely at
+            that - it's still possible to imagine conflicts arising in nested
+            instances of the same macro.
+        </para>
+        <para>
+            We need some way to ensure that a symbol is unique. The Common
+            Lisp function <function>gensym</function> exists just for this purpose.
+            It returns a symbol, called a <function>gensym</function>,
+            which is guaranteed not to be eq to any
+            symbol either typed in or constructed by a program.
+        </para>
+        <para>
+            How can Lisp promise this? In Common Lisp, each package keeps a
+            list of all the symbols known in that package. (For an introduction
+            to packages, see page 381.) A symbol which is on the list is said
+            to be interned in the package. Each call to gensym returns a
+            unique, uninterned symbol. And since every symbol seen by read gets
+            interned, no one could type anything identical to a <function>gensym</function>. Thus,
+            if you begin the expression
+        </para>
+        <programlisting><![CDATA[
+(eq (gensym) ...]]>
+        </programlisting>
+        <para>there is no way to complete it that will cause it to return
+            true.
+        </para>
+        <para>
+            Asking <function>gensym</function> to make you a symbol is
+            like taking the approach of choosing a strangely named symbol
+            one step further - <function>gensym</function> will
+            give you a symbol whose name isn't even in the phone book. When
+            Lisp has to display a <function>gensym</function>,
+        </para>
+        <programlisting><![CDATA[
 > (gensym)
-#:G47
-]]></programlisting>
-<para>what it prints is really just Lisp's equivalent of "John Doe,"
-an arbitrary name made up for something whose name is irrelevant.
-And to be sure that we don't have any illusions about this, gensyms
-are displayed preceded by a sharp-colon, a special read-macro which
-exists just to cause an error if we ever try to read the gensym in
-again.</para>
-<figure xml:id="avoiding-capture-with-gensym">
-<title>Avoiding capture with gensym.</title>
-<para>Vulnerable to capture:</para>
-<programlisting><![CDATA[
+#:G47]]>
+        </programlisting>
+        <para>
+            what it prints is really just Lisp's equivalent of "John Doe,"
+            an arbitrary name made up for something whose name is irrelevant.
+            And to be sure that we don't have any illusions about this, gensyms
+            are displayed preceded by a sharp-colon, a special read-macro which
+            exists just to cause an error if we ever try to read the
+            <function>gensym</function> in again.
+        </para>
+        <figure xml:id="avoiding-capture-with-gensym">
+            <title>Avoiding capture with gensym.</title>
+            <para>Vulnerable to capture:</para>
+            <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body)
   `(do ((,var ,start (1+ ,var))
         (limit ,stop))
        ((> ,var limit))
-     ,@body))
-]]></programlisting>
-<para>A correct version:</para>
-<programlisting><![CDATA[
+     ,@body))]]>
+            </programlisting>
+            <para>A correct version:</para>
+            <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body)
   (let ((gstop (gensym)))
     `(do ((,var ,start (1+ ,var))
           (,gstop ,stop))
          ((> ,var ,gstop))
-       ,@body)))
-]]></programlisting>
-</figure>
-<!-- <a name="IDX41" id="IDX41"></a> -->
-<para>In CLTL2 Common Lisp, the number in a gensym's printed
-representation comes from *gensym-counter*, a global variable
-always bound to an integer. By resetting this counter we can cause
-two gensyms to print the same</para>
-<programlisting><![CDATA[
+       ,@body)))]]>
+            </programlisting>
+        </figure>
+        <!-- <a name="IDX41" id="IDX41"></a> -->
+        <para>
+            In CLTL2 Common Lisp, the number in a gensym's printed
+            representation comes from <varname>*gensym-counter*</varname>, a global variable
+            always bound to an integer. By resetting this counter we can cause
+            two gensyms to print the same
+        </para>
+        <programlisting><![CDATA[
 > (setq x (gensym))
 #:G48
 > (setq *gensym-counter* 48 y (gensym))
@@ -611,63 +682,69 @@ two gensyms to print the same</para>
 > (eq x y)
 NIL
 ]]></programlisting>
-<para>but they won't be identical.</para>
-<para>
-<xref linkend="avoiding-capture-with-gensym"/>
-contains a correct definition of for using gensyms.
-Now there is no limit to clash with symbols in forms passed to the
-macro. It has been replaced by a symbol gensymed on the spot. In
-each expansion of the macro, the place of limit will be taken by a
-unique symbol created at expansion-time.
-</para>
-<para>
-The correct definition of for is a complicated one to produce on
-the first try. Finished code, like a finished theorem, often covers
-up a lot of trial and error. So don't worry if you have to write
-several versions of a macro. To begin writing macros like for, you
-may want to write the first version without thinking about variable
-capture, and then to go back and make gensyms for symbols which
-could be involved in captures.
-</para>
-</section>
-<section xml:id="avoiding-capture-with-packages"
-	 xreflabel="Avoiding Capture with Packages">
-<title>Avoiding Capture with Packages</title>
-<para>To some extent, it is possible to avoid capture by defining
-macros in their own package. If you create a macros package and
-define for there, you can even use the definition given first</para>
-<programlisting><![CDATA[
+        <para>but they won't be identical.</para>
+        <para>
+            <xref linkend="avoiding-capture-with-gensym"/>
+            contains a correct definition of for using gensyms.
+            Now there is no limit to clash with symbols in forms passed to the
+            macro. It has been replaced by a symbol gensymed on the spot. In
+            each expansion of the macro, the place of limit will be taken by a
+            unique symbol created at expansion-time.
+        </para>
+        <para>
+            The correct definition of for is a complicated one to produce on
+            the first try. Finished code, like a finished theorem, often covers
+            up a lot of trial and error. So don't worry if you have to write
+            several versions of a macro. To begin writing macros like for, you
+            may want to write the first version without thinking about variable
+            capture, and then to go back and make gensyms for symbols which
+            could be involved in captures.
+        </para>
+    </section>
+    <section xml:id="avoiding-capture-with-packages"
+             xreflabel="Avoiding Capture with Packages">
+        <title>Avoiding Capture with Packages</title>
+        <para>
+            To some extent, it is possible to avoid capture by defining
+            macros in their own package. If you create a macros package and
+            define for there, you can even use the definition given first
+        </para>
+        <programlisting><![CDATA[
 (defmacro for ((var start stop) &body body)
   `(do ((,var ,start (1+ ,var))
         (limit ,stop))
        ((> ,var limit))
-     ,@body))
-]]></programlisting>
-<para>and call it safely from any other package. If you call for from
-another package, say <varname>mycode</varname>,
-then even if you do use limit as the
-first argument, it will be <varname>mycode::limit</varname> -
-a distinct symbol from <varname>macros::limit</varname>,
-which occurs in the macro skeleton.
-</para>
-<para>
-However, packages do not provide a very general solution to the
-problem of capture. In the first place, macros are an integral part
-of some programs, and it would be inconvenient to have to separate
-them in their own package. Second, this approach offers no
-protection against capture by other code in the macros package.
-</para>
-</section>
-<section xml:id="capture-in-other-name-spaces"
-	 xreflabel="Capture in Other Name-Spaces">
-<title>Capture in Other Name-Spaces</title>
-<para>The previous sections have spoken of capture as if it were a
-problem which afflicted variables exclusively. Although most
-capture is variable capture, the problem can arise in Common Lisp's
-other name-spaces as well.</para>
-<para>Functions may also be locally bound, and function bindings are
-equally liable to inadvertent capture. For example:</para>
-<programlisting><![CDATA[
+     ,@body))]]>
+        </programlisting>
+        <para>and call it safely from any other package. If you call for from
+            another package, say <varname>mycode</varname>,
+            then even if you do use limit as the
+            first argument, it will be <varname>mycode::limit</varname> -
+            a distinct symbol from <varname>macros::limit</varname>,
+            which occurs in the macro skeleton.
+        </para>
+        <para>
+            However, packages do not provide a very general solution to the
+            problem of capture. In the first place, macros are an integral part
+            of some programs, and it would be inconvenient to have to separate
+            them in their own package. Second, this approach offers no
+            protection against capture by other code in the macros package.
+        </para>
+    </section>
+    <section xml:id="capture-in-other-name-spaces"
+             xreflabel="Capture in Other Name-Spaces">
+        <title>Capture in Other Name-Spaces</title>
+        <para>
+            The previous sections have spoken of capture as if it were a
+            problem which afflicted variables exclusively. Although most
+            capture is variable capture, the problem can arise in Common Lisp's
+            other name-spaces as well.
+        </para>
+        <para>
+            Functions may also be locally bound, and function bindings are
+            equally liable to inadvertent capture. For example:
+        </para>
+        <programlisting><![CDATA[
 > (defun fn (x) (+ x 1))
 FN
 > (defmacro mac (x) `(fn ,x))
@@ -678,35 +755,47 @@ MAC
 (mac 10))
 9
 ]]></programlisting>
-<para>As predicted by the capture rule, the fn which occurs free in
-the skeleton of mac is at risk of capture. When fn is locally
-rebound, mac returns a different value than it does generally.</para>
-<para>What to do about this case? When the symbol at risk of capture
-is the name of a built-in function or macro, then it's reasonable
-to do nothing. In CLTL2 (p. 260) if the name of anything built-in
-is given a local function or macro binding, "the consequences are
-undefined." So it wouldn't matter what your macro did--anyone who
-rebinds built-in functions is going to have problems with more than
-just your macros.</para>
-<para>Otherwise, you can protect function names against macro argument
-capture the same way you would protect variable names: by using
-gensyms as names for any functions given local definitions by the
-macro skeleton. Avoiding free symbol capture, as in the case above,
-is a bit more difficult. The way to protect variables against free
-symbol capture was to give them distinctly global names: e.g.
-*warnings* instead of w. This solution is not practical for
-functions, because there is no convention for distinguishing the
-names of global functions--most functions are global. If you're
-concerned about a macro being called in an environment where a
-function it needs might be locally redefined, the best solution is
-probably to put your code in a distinct package.</para>
-<para>Block-names are also liable to capture, as are the tags used by
-go and throw. When your macros need such symbols,you should use
-gensyms,as in the definition of our-do on page 98.</para>
-<para>Remember also that operators like do are implicitly enclosed in
-a block named nil. Thus a return or return-from nil within a do
-returns from the do, not the containing expression:</para>
-<programlisting><![CDATA[
+        <para>
+            As predicted by the capture rule, the fn which occurs free in
+            the skeleton of mac is at risk of capture. When fn is locally
+            rebound, mac returns a different value than it does generally.
+        </para>
+        <para>
+            What to do about this case? When the symbol at risk of capture
+            is the name of a built-in function or macro, then it's reasonable
+            to do nothing. In CLTL2 (p. 260) if the name of anything built-in
+            is given a local function or macro binding, "the consequences are
+            undefined." So it wouldn't matter what your macro did - anyone who
+            rebinds built-in functions is going to have problems with more than
+            just your macros.
+        </para>
+        <para>
+            Otherwise, you can protect function names against macro argument
+            capture the same way you would protect variable names: by using
+            gensyms as names for any functions given local definitions by the
+            macro skeleton. Avoiding free symbol capture, as in the case above,
+            is a bit more difficult. The way to protect variables against free
+            symbol capture was to give them distinctly global names: e.g.
+            <varname>*warnings*</varname> instead of <varname>w</varname>.
+            This solution is not practical for
+            functions, because there is no convention for distinguishing the
+            names of global functions - most functions are global. If you're
+            concerned about a macro being called in an environment where a
+            function it needs might be locally redefined, the best solution is
+            probably to put your code in a distinct package.
+        </para>
+        <para>
+            Block-names are also liable to capture, as are the tags used by
+            go and throw. When your macros need such symbols,you should use
+            gensyms,as in the definition of our-do on page 98.
+        </para>
+        <para>
+            Remember also that operators like do are implicitly enclosed in
+            a block named <constant>nil</constant>. Thus a <function>return</function>
+            or <code>return-from nil</code> within a <function>do</function>
+            returns from the <function>do</function>, not the containing expression:
+        </para>
+        <programlisting><![CDATA[
 > (block nil
 (list 'a
 (do ((x 1 (1+ x)))
@@ -715,57 +804,56 @@ returns from the do, not the containing expression:</para>
 (return-from nil x)
 (princ x)))))
 12345
-(A 6)
-]]></programlisting>
-<para>
-If do didn't create a block named nil, this example would have
-returned just 6, rather than (A 6).
-</para>
-<para>
-The implicit block in do is not a problem, because do is
-advertised to behave this way. However, you should realize that if
-you write macros which expand into dos, they will capture the block
-name nil. In a macro like for, a return or return-from nil will
-return from the for expression, not the enclosing block.
-</para>
-</section>
-<section xml:id="why-bother"
-	 xreflabel="Why Bother?">
-<title>Why Bother?</title>
-<para>
-Some of the preceding examples are pretty pathological. Looking
-at them, one might be tempted to say "variable capture is so
-unlikely - why even worry about it?" There are two ways to answer
-this question. One is with another question: why write programs
-with small bugs when you could write programs with no bugs?
-</para>
-<para>
-The longer answer is to point out that in real applications it's
-dangerous to assume anything about the way your code will be used.
-Any Lisp program has what is now called an "open architecture." If
-you're writing code other people will use, they may use it in ways
-you'd never anticipate. And it's not just people you have to worry
-about. Programs write programs too. It may be that no human would
-write code like
-</para>
-<programlisting><![CDATA[
+(A 6)]]>
+        </programlisting>
+        <para>
+            If do didn't create a block named nil, this example would have
+            returned just 6, rather than (A 6).
+        </para>
+        <para>
+            The implicit block in do is not a problem, because do is
+            advertised to behave this way. However, you should realize that if
+            you write macros which expand into dos, they will capture the block
+            name nil. In a macro like for, a return or return-from nil will
+            return from the for expression, not the enclosing block.
+        </para>
+    </section>
+    <section xml:id="why-bother"
+             xreflabel="Why Bother?">
+        <title>Why Bother?</title>
+        <para>
+            Some of the preceding examples are pretty pathological. Looking
+            at them, one might be tempted to say "variable capture is so
+            unlikely - why even worry about it?" There are two ways to answer
+            this question. One is with another question: why write programs
+            with small bugs when you could write programs with no bugs?
+        </para>
+        <para>
+            The longer answer is to point out that in real applications it's
+            dangerous to assume anythdoing about the way your code will be used.
+            Any Lisp program has what is now called an "open architecture." If
+            you're writing code other people will use, they may use it in ways
+            you'd never anticipate. And it's not just people you have to worry
+            about. Programs write programs too. It may be that no human would
+            write code like
+        </para>
+        <programlisting><![CDATA[
 (before (progn (setq seq '(b a)) 'a)
         'b
-        '(a b))
-]]>
-</programlisting>
-<para>but code generated by programs often looks like this. Even if
-individual macros generate simple and reasonable-looking expansions,
-once you begin to nest macro calls, the expansions can become large
-programs which look like nothing any human would write. Under such
-circumstances, it is worth defending against cases, however contrived,
-which might make your macros expand incorrectly.
-</para>
-<para>
-In the end, avoiding variable capture is not very difficult anyway. It
-soon becomes second-nature. The classic Common Lisp defmacro is like a
-cook's knife: an elegant idea which seems dangerous, but which experts
-use with confidence.
-</para>
-</section>
+        '(a b))]]>
+        </programlisting>
+        <para>but code generated by programs often looks like this. Even if
+            individual macros generate simple and reasonable-looking expansions,
+            once you begin to nest macro calls, the expansions can become large
+            programs which look like nothing any human would write. Under such
+            circumstances, it is worth defending against cases, however contrived,
+            which might make your macros expand incorrectly.
+        </para>
+        <para>
+            In the end, avoiding variable capture is not very difficult anyway. It
+            soon becomes second-nature. The classic Common Lisp <function>defmacro</function> is like a
+            cook's knife: an elegant idea which seems dangerous, but which experts
+            use with confidence.
+        </para>
+    </section>
 </chapter>

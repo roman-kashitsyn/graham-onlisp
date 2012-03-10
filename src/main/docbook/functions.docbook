@@ -499,7 +499,7 @@ T]]>
             possible some new programming techniques.
         </para>
     </section>
-    <section xml:id="clojures" xreflabel="Closures">
+    <section xml:id="closures" xreflabel="Closures">
         <title>Closures</title>
         <para>
             Because Common Lisp is lexically scoped, when we define a
@@ -1059,7 +1059,7 @@ T]]>
         <para>in the first place. The drawback is that if we redefine 50th, we
             also have to recompile foo, or it will still reflect the old
             definition. The restrictions on inline functions are basically the
-            same as those on macros (see Section 7.9).
+            same as those on macros (see Section <xref linkend="dependence-on-macros"/>).
         </para>
     </section>
     <section xml:id="functions-from-lists" xreflabel="Functions from Lists">
