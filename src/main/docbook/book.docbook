@@ -41,5 +41,6 @@
     <xi:include href="classic-macros.docbook"/>
     <xi:include href="generalized-variables.docbook"/>
     <xi:include href="computation-at-compile-time.docbook"/>
+    <xi:include href="anaphoric-macros.docbook"/>
 
 </book>

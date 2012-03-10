@@ -217,7 +217,7 @@ T]]>
             considering, even if you choose not to take advantage of it.
         </para>
         <figure xml:id="fig13-4-expansion-of-nthmost">
-            <title>Expansion of<function>nthmost</function>.
+            <title>Expansion of <function>nthmost</function>.
             </title>
             <programlisting><![CDATA[
 (nthmost 2 nums)]]>
@@ -303,7 +303,6 @@ T]]>
             then the equations defining points on the curve
             are:
         </para>
-<!--        <programlisting><![CDATA[ -->
         <informalequation>
             <mathphrase>
                 x = (x<subscript>3</subscript> - 3x<subscript>2</subscript> +
@@ -326,7 +325,6 @@ T]]>
                 + y<subscript>0</subscript>
             </mathphrase>
         </informalequation>
-        <!-- </programlisting> -->
         <para>
             If we evaluate these equations for n values of u between 0 and
             1, we get n points on the curve. For example, if we want to draw
