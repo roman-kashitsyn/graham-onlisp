@@ -30,6 +30,7 @@
             <goals>
               <goal>generate-pdf</goal>
               <goal>generate-html</goal>
+              <goal>generate-epub</goal>
             </goals>
             <configuration>
               <draftMode>yes</draftMode>
@@ -38,7 +39,7 @@
         </executions>
         <configuration>
           <sourceDirectory>${basedir}/src/main/docbook</sourceDirectory>
-          <includes>*.docbook</includes>
+          <includes>book.docbook</includes>
           <generatedSourceDirectory>${project.build.directory}/docbkx/generated</generatedSourceDirectory>
           <xincludeSupported>true</xincludeSupported>
           <highlightSource>1</highlightSource>
